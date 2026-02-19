@@ -234,3 +234,8 @@ pub async fn verify_license() -> Result<license::LicenseStatus, String> {
         .await
         .map_err(|e| e.to_string())?
 }
+
+#[tauri::command]
+pub fn clear_license() {
+    license::clear_license();
+}

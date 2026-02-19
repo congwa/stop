@@ -3,12 +3,26 @@ import { useLicenseStore } from '../store/useLicenseStore'
 import ActivationPage from './ActivationPage'
 import { Loader2, WifiOff } from 'lucide-react'
 
+const HEARTBEAT_INTERVAL_MS = 30 * 60 * 1000 // 30 分钟
+
 export default function LicenseGate({ children }: { children: ReactNode }) {
-  const { status, loading, error, verifyLicense } = useLicenseStore()
+  const { status, loading, error, verifyLicense, logoutLicense } = useLicenseStore()
 
   useEffect(() => {
     verifyLicense()
   }, [verifyLicense])
+
+  // 心跳：定期重新验证，过期或失效自动退出
+  useEffect(() => {
+    const timer = setInterval(async () => {
+      await verifyLicense()
+      const s = useLicenseStore.getState().status
+      if (!s?.valid) {
+        logoutLicense()
+      }
+    }, HEARTBEAT_INTERVAL_MS)
+    return () => clearInterval(timer)
+  }, [verifyLicense, logoutLicense])
 
   if (loading) {
     return (

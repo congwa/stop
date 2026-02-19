@@ -1,7 +1,7 @@
-from datetime import date, datetime
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session, select
 
+from config import beijing_today, beijing_now
 from database import get_session
 from models import License, ActivateRequest, ActivateResponse, VerifyRequest, VerifyResponse, TimeResponse
 from services.license import parse_key, hash_key
@@ -22,7 +22,7 @@ def activate(req: ActivateRequest, session: Session = Depends(get_session)):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=f"Key 无效: {err}")
 
     time_info = get_signed_time()
-    today = date.today()
+    today = beijing_today()
 
     if expiry_date is not None and today > expiry_date:
         raise HTTPException(status_code=402, detail="License 已过期")
@@ -44,7 +44,7 @@ def activate(req: ActivateRequest, session: Session = Depends(get_session)):
 
     if license_row.machine_id is None:
         license_row.machine_id = req.machine_id
-        license_row.activated_at = datetime.utcnow()
+        license_row.activated_at = beijing_now()
         session.add(license_row)
         session.commit()
         session.refresh(license_row)
@@ -64,7 +64,7 @@ def verify(req: VerifyRequest, session: Session = Depends(get_session)):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=f"Key 无效: {err}")
 
     time_info = get_signed_time()
-    today = date.today()
+    today = beijing_today()
 
     if expiry_date is not None and today > expiry_date:
         raise HTTPException(status_code=402, detail="License 已过期")

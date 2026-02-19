@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, HTTPException, status
 from sqlmodel import SQLModel
 from jose import jwt
@@ -27,7 +27,8 @@ def login(body: LoginRequest):
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="私钥错误",
         )
-    expire = datetime.utcnow() + timedelta(hours=JWT_EXPIRE_HOURS)
-    payload = {"sub": "admin", "exp": expire, "iat": datetime.utcnow()}
+    now = datetime.now(timezone.utc)
+    expire = now + timedelta(hours=JWT_EXPIRE_HOURS)
+    payload = {"sub": "admin", "exp": expire, "iat": now}
     token = jwt.encode(payload, SECRET_KEY, algorithm=JWT_ALGORITHM)
     return TokenResponse(token=token, expires_in=JWT_EXPIRE_HOURS * 3600)

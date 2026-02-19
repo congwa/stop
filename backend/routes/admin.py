@@ -1,9 +1,10 @@
-from datetime import date, datetime, timedelta
+from datetime import timedelta
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlmodel import Session, select, func, col
 
 from auth import require_admin
+from config import beijing_today, beijing_now
 from database import get_session
 from models import License, LicenseCreate, LicenseRead, StatsResponse
 from services.license import generate_key, hash_key, KEY_TYPE_DAYS
@@ -20,7 +21,7 @@ def list_keys(
     session: Session = Depends(get_session),
     _: str = Depends(require_admin),
 ):
-    today = date.today()
+    today = beijing_today()
     query = select(License)
 
     if status_filter == "activated":
@@ -94,7 +95,7 @@ def generate_keys(
         raise HTTPException(status_code=400, detail=f"key_type 无效，可选: {list(KEY_TYPE_DAYS.keys())}")
 
     days = KEY_TYPE_DAYS[body.key_type]
-    today = date.today()
+    today = beijing_today()
     expiry = None if days == 0xFFFF else today + timedelta(days=days)
 
     keys = []
@@ -148,7 +149,7 @@ def get_stats(
     session: Session = Depends(get_session),
     _: str = Depends(require_admin),
 ):
-    today = date.today()
+    today = beijing_today()
     soon = today + timedelta(days=30)
 
     total = session.exec(select(func.count()).select_from(License)).one()
@@ -164,6 +165,7 @@ def get_stats(
             License.expiry_date < today,
         )
     ).one()
+    from datetime import datetime
     today_start = datetime.combine(today, datetime.min.time())
     today_activated = session.exec(
         select(func.count()).select_from(License).where(

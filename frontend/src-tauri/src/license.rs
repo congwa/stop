@@ -61,6 +61,10 @@ fn clear_cache() {
     let _ = fs::remove_file(cache_path());
 }
 
+pub fn clear_license() {
+    clear_cache();
+}
+
 pub fn get_machine_id() -> String {
     #[cfg(target_os = "macos")]
     {

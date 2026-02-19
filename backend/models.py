@@ -1,6 +1,7 @@
 from datetime import datetime, date
 from typing import Optional
 from sqlmodel import SQLModel, Field
+from config import beijing_now
 
 
 class License(SQLModel, table=True):
@@ -13,7 +14,7 @@ class License(SQLModel, table=True):
     activated_at: Optional[datetime] = Field(default=None)
     is_revoked: bool = Field(default=False)
     note: Optional[str] = Field(default=None)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=beijing_now)
     key_type: str = Field(default="30d")
 
 

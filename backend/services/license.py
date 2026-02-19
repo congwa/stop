@@ -6,7 +6,7 @@ import base64
 from datetime import date, timedelta
 from typing import Optional, Tuple
 
-from config import SECRET_KEY, KEY_EPOCH_DATE
+from config import SECRET_KEY, KEY_EPOCH_DATE, beijing_today
 
 KEY_TYPE_DAYS = {
     "7d": 7,
@@ -57,7 +57,7 @@ def _hmac_sign(data: bytes) -> bytes:
 
 def generate_key(key_type: str) -> str:
     days = KEY_TYPE_DAYS.get(key_type, 30)
-    epoch_offset = (date.today() - KEY_EPOCH_DATE).days if days != 0xFFFF else 0
+    epoch_offset = (beijing_today() - KEY_EPOCH_DATE).days if days != 0xFFFF else 0
     expiry_days = epoch_offset + days if days != 0xFFFF else 0xFFFF
 
     # 6-byte payload + 4-byte sig = 10 bytes → exactly 16 base32 chars

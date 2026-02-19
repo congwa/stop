@@ -98,6 +98,7 @@ pub fn run() {
             commands::get_machine_id,
             commands::activate_license,
             commands::verify_license,
+            commands::clear_license,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

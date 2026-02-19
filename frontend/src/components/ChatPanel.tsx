@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { useChatStore } from '@/store/useChatStore'
+import { useLicenseStore } from '@/store/useLicenseStore'
 import { cn } from '@/lib/utils'
 import {
   Play,
@@ -19,6 +20,7 @@ import {
   AlertTriangle,
   HardDrive,
   RefreshCw,
+  KeyRound,
 } from 'lucide-react'
 
 // ============================================================
@@ -43,16 +45,19 @@ export function ChatPanel() {
   const latestPrompt = pendingPrompts[0] ?? null
   const isResponded = latestPrompt ? respondedIds.has(latestPrompt.request_id) : false
 
+  const { status: licenseStatus, logoutLicense } = useLicenseStore()
+
   return (
     <div className="flex flex-col h-screen">
       {/* Header */}
       <header className="border-b bg-card px-4 py-3 flex items-center justify-between shrink-0">
         <div>
           <h1 className="text-base font-bold text-foreground">Stop · AI 对话反馈</h1>
-          <p className="text-xs text-muted-foreground mt-0.5">全局规则 · 自动生效 · 退出即清理</p>
+          <p className="text-xs text-muted-foreground mt-0.5">自动生效 · 退出即清理</p>
         </div>
         <div className="flex items-center gap-2">
           {autoModeInfo && <AutoModeBadge policy={autoModeInfo.auto_execution_policy} />}
+          {licenseStatus?.expiry_date && <LicenseExpiryBadge expiryDate={licenseStatus.expiry_date} />}
           <ServerStatusBadge running={isRunning} />
           {isRunning ? (
             <button onClick={stopServer} className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors">
@@ -63,6 +68,13 @@ export function ChatPanel() {
               <Play className="h-3.5 w-3.5" />{isStarting ? '启动中...' : '启动'}
             </button>
           )}
+          <button
+            onClick={logoutLicense}
+            className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+            title="切换 License Key"
+          >
+            <KeyRound className="h-3.5 w-3.5" />
+          </button>
         </div>
       </header>
 
@@ -117,6 +129,57 @@ function AutoModeBadge({ policy }: { policy: string }) {
   )
 }
 
+function LicenseExpiryBadge({ expiryDate }: { expiryDate: string }) {
+  const [remaining, setRemaining] = useState('')
+  const [expired, setExpired] = useState(false)
+  const { logoutLicense } = useLicenseStore()
+
+  useEffect(() => {
+    function calc() {
+      // expiry_date is a bare date string (e.g. "2025-12-31") from the server.
+      // JS parses bare dates as UTC midnight, causing an 8-hour offset in UTC+8.
+      // Treat it as end-of-day Beijing time (UTC+8) = T23:59:59+08:00.
+      const expiry = new Date(`${expiryDate}T23:59:59+08:00`).getTime()
+      const diffMs = expiry - Date.now()
+      if (diffMs <= 0) {
+        setRemaining('已过期')
+        setExpired(true)
+        return
+      }
+      const days = Math.floor(diffMs / 86400000)
+      if (days > 0) { setRemaining(`${days}天`); return }
+      const hours = Math.floor(diffMs / 3600000)
+      setRemaining(`${hours}h`)
+    }
+    calc()
+    const t = setInterval(calc, 60_000)
+    return () => clearInterval(t)
+  }, [expiryDate])
+
+  useEffect(() => {
+    if (expired) {
+      logoutLicense()
+    }
+  }, [expired, logoutLicense])
+
+  const isExpiringSoon = (() => {
+    const diffMs = new Date(`${expiryDate}T23:59:59+08:00`).getTime() - Date.now()
+    return diffMs > 0 && diffMs < 7 * 86400000
+  })()
+
+  return (
+    <span className={cn(
+      'flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium border',
+      expired || isExpiringSoon
+        ? 'border-amber-500/30 bg-amber-500/5 text-amber-600'
+        : 'border-emerald-500/20 bg-emerald-500/5 text-emerald-600'
+    )}>
+      <Clock className="h-3 w-3" />
+      {remaining}
+    </span>
+  )
+}
+
 // ============================================================
 // RAM Disk Status Bar
 // ============================================================
@@ -132,7 +195,7 @@ function RamDiskStatusBar({
     return (
       <div className="flex items-center gap-2 px-3 py-2 rounded-md border border-border bg-muted/30 text-xs text-muted-foreground">
         <Loader2 className="h-3.5 w-3.5 animate-spin" />
-        正在初始化 RAM Disk 和全局规则...
+        正在初始化 RAM Disk...
       </div>
     )
   }
@@ -157,7 +220,7 @@ function RamDiskStatusBar({
     return (
       <div className="flex items-center gap-2 px-3 py-2 rounded-md border border-emerald-500/20 bg-emerald-500/5 text-xs">
         <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
-        <span className="text-emerald-600 font-medium">全局规则已激活</span>
+        <span className="text-emerald-600 font-medium">已激活</span>
         <span className="text-muted-foreground ml-1">所有 Windsurf 项目自动生效，退出即清理</span>
         {!status.launch_agent_installed && (
           <span className="text-amber-500 ml-auto">(LaunchAgent 未安装)</span>
@@ -169,7 +232,7 @@ function RamDiskStatusBar({
   const issues = [
     !status.mounted && 'RAM Disk 未挂载',
     status.mounted && !status.binary_installed && '二进制未安装',
-    !status.global_rules_installed && '全局规则未写入',
+    !status.global_rules_installed && '全局控制代码未写入',
   ].filter(Boolean)
 
   return (
@@ -243,7 +306,11 @@ function PromptCard({ prompt, isResponded }: { prompt: ReturnType<typeof useChat
     return () => clearInterval(timer)
   }, [prompt.timestamp])
 
-  useEffect(() => { textareaRef.current?.focus() }, [prompt.request_id])
+  useEffect(() => {
+    setText('')
+    setImages([])
+    textareaRef.current?.focus()
+  }, [prompt.request_id])
 
   const processImageFile = useCallback(async (file: File) => {
     const preview = URL.createObjectURL(file)

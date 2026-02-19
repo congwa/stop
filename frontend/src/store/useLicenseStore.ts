@@ -18,6 +18,7 @@ interface LicenseState {
   loadMachineId: () => Promise<void>
   verifyLicense: () => Promise<void>
   activateLicense: (key: string) => Promise<void>
+  logoutLicense: () => Promise<void>
 }
 
 export const useLicenseStore = create<LicenseState>((set) => ({
@@ -58,5 +59,14 @@ export const useLicenseStore = create<LicenseState>((set) => ({
     } catch (e) {
       set({ activating: false, error: String(e) })
     }
+  },
+
+  logoutLicense: async () => {
+    try {
+      await invoke('clear_license')
+    } catch {
+      // ignore
+    }
+    set({ status: null, error: '', loading: false })
   },
 }))
