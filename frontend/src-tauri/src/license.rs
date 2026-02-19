@@ -2,7 +2,11 @@ use std::fs;
 use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 
-const SERVER_BASE: &str = "http://windsurf-stop.biomed168.com";
+const SERVER_BASE: &str = if cfg!(dev) {
+    "http://localhost:17771"
+} else {
+    "http://windsurf-stop.biomed168.com"
+};
 const CACHE_FILE: &str = ".stop_license";
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
