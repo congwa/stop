@@ -7,6 +7,7 @@ from fastapi.responses import FileResponse
 from database import init_db
 from routes.api import router as api_router
 from routes.admin import router as admin_router
+from routes.admin_auth import router as admin_auth_router
 from config import PORT, HOST
 
 app = FastAPI(title="Stop License Server", version="1.0.0", docs_url="/docs")
@@ -20,6 +21,7 @@ app.add_middleware(
 )
 
 app.include_router(api_router)
+app.include_router(admin_auth_router)
 app.include_router(admin_router)
 
 STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")

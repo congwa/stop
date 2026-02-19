@@ -1,16 +1,26 @@
 import { useState } from 'react'
-import { setToken } from '../lib/api'
-import { KeyRound } from 'lucide-react'
+import { loginWithPrivateKey } from '../lib/api'
+import { KeyRound, Loader2 } from 'lucide-react'
 
 export default function Login({ onLogin }: { onLogin: () => void }) {
   const [t, setT] = useState('')
   const [err, setErr] = useState('')
+  const [loading, setLoading] = useState(false)
 
-  function submit(e: React.FormEvent) {
+  async function submit(e: React.FormEvent) {
     e.preventDefault()
-    if (!t.trim()) { setErr('请输入 Token'); return }
-    setToken(t.trim())
-    onLogin()
+    if (!t.trim()) { setErr('请输入私钥'); return }
+    setLoading(true)
+    setErr('')
+    try {
+      await loginWithPrivateKey(t.trim())
+      onLogin()
+    } catch (ex: unknown) {
+      const e = ex as { response?: { data?: { detail?: string } } }
+      setErr(e.response?.data?.detail || '私钥错误，请检查后重试')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -30,16 +40,18 @@ export default function Login({ onLogin }: { onLogin: () => void }) {
               type="password"
               value={t}
               onChange={(e) => setT(e.target.value)}
-              placeholder="输入管理员 Token"
+              placeholder="输入管理员私钥"
               className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
           </div>
           {err && <p className="text-red-500 text-sm">{err}</p>}
           <button
             type="submit"
-            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg py-2 font-medium transition-colors"
+            disabled={loading}
+            className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-lg py-2 font-medium transition-colors flex items-center justify-center gap-2"
           >
-            登录
+            {loading && <Loader2 size={14} className="animate-spin" />}
+            {loading ? '验证中...' : '登录'}
           </button>
         </form>
       </div>

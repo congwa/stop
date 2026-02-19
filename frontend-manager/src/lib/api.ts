@@ -2,15 +2,22 @@ import axios from 'axios'
 
 const BASE = '/admin/api'
 
-let token = localStorage.getItem('admin_token') || ''
+let token = localStorage.getItem('admin_jwt') || ''
 
 export function setToken(t: string) {
   token = t
-  localStorage.setItem('admin_token', t)
+  localStorage.setItem('admin_jwt', t)
 }
 
 export function getToken() {
   return token
+}
+
+export async function loginWithPrivateKey(privateKey: string): Promise<string> {
+  const r = await axios.post('/admin/auth/login', { private_key: privateKey })
+  const jwt: string = r.data.token
+  setToken(jwt)
+  return jwt
 }
 
 const client = axios.create({ baseURL: BASE })
