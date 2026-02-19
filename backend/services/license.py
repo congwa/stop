@@ -9,6 +9,12 @@ from typing import Optional, Tuple
 from config import SECRET_KEY, KEY_EPOCH_DATE, beijing_today
 
 KEY_TYPE_DAYS = {
+    "2h": 0,
+    "1d": 1,
+    "2d": 2,
+    "3d": 3,
+    "4d": 4,
+    "5d": 5,
     "7d": 7,
     "30d": 30,
     "90d": 90,

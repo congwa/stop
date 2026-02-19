@@ -3,6 +3,12 @@ import { api } from '../lib/api'
 import { Copy, Check, Download } from 'lucide-react'
 
 const KEY_TYPES = [
+  { value: '2h', label: '2 小时测试' },
+  { value: '1d', label: '1 天' },
+  { value: '2d', label: '2 天' },
+  { value: '3d', label: '3 天' },
+  { value: '4d', label: '4 天' },
+  { value: '5d', label: '5 天' },
   { value: '7d', label: '7 天' },
   { value: '30d', label: '30 天' },
   { value: '90d', label: '90 天' },

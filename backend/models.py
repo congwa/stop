@@ -16,6 +16,7 @@ class License(SQLModel, table=True):
     note: Optional[str] = Field(default=None)
     created_at: datetime = Field(default_factory=beijing_now)
     key_type: str = Field(default="30d")
+    plain_key: Optional[str] = Field(default=None)
 
 
 class LicenseCreate(SQLModel):
@@ -34,6 +35,7 @@ class LicenseRead(SQLModel):
     note: Optional[str]
     created_at: datetime
     key_type: str
+    plain_key: Optional[str]
 
 
 class ActivateRequest(SQLModel):

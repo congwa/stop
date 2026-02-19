@@ -77,6 +77,7 @@ def list_keys(
                 "note": lic.note,
                 "created_at": lic.created_at.isoformat(),
                 "status": _status(lic),
+                "plain_key": lic.plain_key,
             }
             for lic in items
         ],
@@ -107,6 +108,7 @@ def generate_keys(
             expiry_date=expiry,
             key_type=body.key_type,
             note=body.note,
+            plain_key=key,
         )
         session.add(lic)
         keys.append(key)

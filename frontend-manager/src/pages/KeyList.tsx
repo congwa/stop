@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api } from '../lib/api'
 import type { KeyItem } from '../lib/api'
-import { Trash2, Ban, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Trash2, Ban, ChevronLeft, ChevronRight, Copy, Check } from 'lucide-react'
 
 const STATUS_LABELS: Record<string, { label: string; className: string }> = {
   activated: { label: '已激活', className: 'bg-emerald-100 text-emerald-700' },
@@ -24,6 +24,7 @@ export default function KeyList() {
   const [page, setPage] = useState(1)
   const [statusFilter, setStatusFilter] = useState('')
   const [loading, setLoading] = useState(true)
+  const [copiedId, setCopiedId] = useState<number | null>(null)
   const pageSize = 20
 
   function load(p = page, s = statusFilter) {
@@ -50,6 +51,12 @@ export default function KeyList() {
     if (!confirm('确认吊销该 Key？')) return
     await api.revokeKey(id)
     load()
+  }
+
+  function copyKey(id: number, key: string) {
+    navigator.clipboard.writeText(key)
+    setCopiedId(id)
+    setTimeout(() => setCopiedId(null), 2000)
   }
 
   async function del(id: number) {
@@ -93,7 +100,7 @@ export default function KeyList() {
             <thead className="bg-slate-50 text-slate-500 text-xs">
               <tr>
                 <th className="px-4 py-3 text-left font-medium">ID</th>
-                <th className="px-4 py-3 text-left font-medium">Key Hash</th>
+                <th className="px-4 py-3 text-left font-medium">原始密钥</th>
                 <th className="px-4 py-3 text-left font-medium">类型</th>
                 <th className="px-4 py-3 text-left font-medium">到期日</th>
                 <th className="px-4 py-3 text-left font-medium">激活时间</th>
@@ -109,7 +116,22 @@ export default function KeyList() {
                 return (
                   <tr key={item.id} className="hover:bg-slate-50/50">
                     <td className="px-4 py-3 text-slate-500">{item.id}</td>
-                    <td className="px-4 py-3 font-mono text-xs text-slate-600">{item.key_hash}</td>
+                    <td className="px-4 py-3">
+                      {item.plain_key ? (
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-mono text-xs text-slate-700 select-all">{item.plain_key}</span>
+                          <button
+                            onClick={() => copyKey(item.id, item.plain_key!)}
+                            title="复制密钥"
+                            className="text-slate-400 hover:text-indigo-600 transition-colors flex-shrink-0"
+                          >
+                            {copiedId === item.id ? <Check size={13} className="text-emerald-500" /> : <Copy size={13} />}
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="text-slate-300 text-xs">—</span>
+                      )}
+                    </td>
                     <td className="px-4 py-3 text-slate-600">{item.key_type}</td>
                     <td className="px-4 py-3 text-slate-600">{item.expiry_date}</td>
                     <td className="px-4 py-3 text-slate-500 text-xs">{item.activated_at ? item.activated_at.slice(0, 16) : '—'}</td>

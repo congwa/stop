@@ -50,6 +50,7 @@ export interface KeyItem {
   note: string | null
   created_at: string
   status: 'activated' | 'unactivated' | 'revoked' | 'expired'
+  plain_key: string | null
 }
 
 export interface KeyListResponse {
