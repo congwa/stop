@@ -159,15 +159,43 @@ pub fn cli_binary_name() -> &'static str {
 }
 
 /// Find the windsurf_chat binary shipped with this app.
+/// Search order:
+/// 1. Next to the main executable (covers both dev and packaged macOS bundle MacOS/ dir)
+/// 2. Contents/Resources/ inside .app bundle  
+/// 3. Next to exe in release target dir (fallback for direct cargo run)
 pub fn find_app_binary() -> Option<PathBuf> {
-    // Try next to the current executable
-    let candidates = [
-        std::env::current_exe().ok().and_then(|p| p.parent().map(|d| d.join("windsurf_chat"))),
-        // macOS .app bundle Resources
-        std::env::current_exe().ok().and_then(|p| {
-            p.ancestors().find(|a| a.file_name().map(|n| n == "MacOS").unwrap_or(false))
-                .map(|macos| macos.parent().unwrap_or(macos).join("Resources").join("windsurf_chat"))
-        }),
-    ];
-    candidates.into_iter().flatten().find(|p| p.exists())
+    let exe = match std::env::current_exe() {
+        Ok(e) => e,
+        Err(_) => return None,
+    };
+    let exe_dir = exe.parent()?;
+    let name = cli_binary_name();
+
+    // 1. Same directory as main exe (dev build & macOS bundle Contents/MacOS/)
+    let candidate1 = exe_dir.join(name);
+    if candidate1.exists() { return Some(candidate1); }
+
+    // 2. macOS .app bundle Contents/Resources/
+    #[cfg(target_os = "macos")]
+    {
+        for ancestor in exe.ancestors() {
+            if ancestor.file_name().map(|n| n == "MacOS").unwrap_or(false) {
+                if let Some(contents) = ancestor.parent() {
+                    let candidate = contents.join("Resources").join(name);
+                    if candidate.exists() { return Some(candidate); }
+                }
+                break;
+            }
+        }
+    }
+
+    // 3. Traverse up to find target/release/ (for cargo run from workspace)
+    for ancestor in exe.ancestors() {
+        let candidate = ancestor.join("release").join(name);
+        if candidate.exists() { return Some(candidate); }
+        let candidate2 = ancestor.join(name);
+        if candidate2.exists() && candidate2 != exe { return Some(candidate2); }
+    }
+
+    None
 }

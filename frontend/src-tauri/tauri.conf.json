@@ -7,6 +7,7 @@
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
     "beforeBuildCommand": "npm run build",
+    "beforeBundleCommand": "cargo build --release --bin windsurf_chat && mkdir -p binaries && cp target/release/windsurf_chat \"binaries/windsurf_chat-$(rustc -Vv | grep host | cut -d' ' -f2)\"",
     "frontendDist": "../dist"
   },
   "app": {
@@ -34,6 +35,7 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "externalBin": ["binaries/windsurf_chat"]
   }
 }
