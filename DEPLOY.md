@@ -57,16 +57,17 @@ DATABASE_URL=sqlite:///./data/stop_license.db
 ### 4. 构建并启动
 
 ```bash
-# 构建 Admin 面板（输出到 backend/static/）
-cd frontend-manager && npm install && npm run build && cd ..
-
-# 启动 Docker 容器
+# 一条命令完成所有构建（Docker 内部自动安装所有依赖）：
+# Stage 1: Node.js 安装 frontend-manager 依赖并构建 Admin 面板
+# Stage 2: Python 安装后端依赖，打包 Admin 静态文件
 docker compose up -d --build
 
 # 检查状态
 docker compose ps
 curl http://localhost:17771/health
 ```
+
+> **无需**在服务器上安装 Node.js 或手动执行 npm install，Docker 多阶段构建全部处理。
 
 ### 5. 配置宝塔 Nginx
 
@@ -187,8 +188,8 @@ cp /opt/stop/data/stop_license.db /backup/stop_license_$(date +%Y%m%d).db
 ```bash
 cd /opt/stop
 git pull
-cd frontend-manager && npm run build && cd ..
 docker compose up -d --build
+# Docker 会重新构建镜像（含 Admin 面板），数据卷 ./data/ 不受影响
 ```
 
 ---
