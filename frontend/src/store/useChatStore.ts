@@ -55,6 +55,8 @@ interface ChatStoreState {
   initRamDisk: () => Promise<void>
   refreshRamDiskStatus: () => Promise<void>
   cleanupRamDisk: () => Promise<void>
+  installGlobalRules: () => Promise<void>
+  removeInjection: () => Promise<void>
 
   startServer: () => Promise<void>
   stopServer: () => Promise<void>
@@ -186,6 +188,24 @@ export const useChatStore = create<ChatStoreState>((set, get) => ({
       set({ ramDiskStatus: null })
     } catch (e) {
       set({ error: String(e) })
+    }
+  },
+
+  installGlobalRules: async () => {
+    if (!isTauri()) return
+    try {
+      await tauriInvoke('install_global_rules')
+    } catch (e) {
+      set({ error: String(e) })
+    }
+  },
+
+  removeInjection: async () => {
+    if (!isTauri()) return
+    try {
+      await tauriInvoke('remove_injection')
+    } catch {
+      // ignore — may fail if already removed
     }
   },
 

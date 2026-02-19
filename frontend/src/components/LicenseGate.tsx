@@ -1,5 +1,6 @@
-import { useEffect, ReactNode } from 'react'
+import { useEffect, useRef, ReactNode } from 'react'
 import { useLicenseStore } from '../store/useLicenseStore'
+import { useChatStore } from '../store/useChatStore'
 import ActivationPage from './ActivationPage'
 import { Loader2, WifiOff } from 'lucide-react'
 
@@ -7,22 +8,37 @@ const HEARTBEAT_INTERVAL_MS = 30 * 60 * 1000 // 30 分钟
 
 export default function LicenseGate({ children }: { children: ReactNode }) {
   const { status, loading, error, verifyLicense, logoutLicense } = useLicenseStore()
+  const { installGlobalRules, removeInjection } = useChatStore()
+  const injectedRef = useRef(false)
 
   useEffect(() => {
     verifyLicense()
   }, [verifyLicense])
 
-  // 心跳：定期重新验证，过期或失效自动退出
+  // 根据 License 状态控制注入：有效则注入，无效则清除
+  useEffect(() => {
+    if (status?.valid && !injectedRef.current) {
+      injectedRef.current = true
+      installGlobalRules()
+    } else if (status !== null && !status.valid && injectedRef.current) {
+      injectedRef.current = false
+      removeInjection()
+    }
+  }, [status?.valid, installGlobalRules, removeInjection])
+
+  // 心跳：定期重新验证，过期或失效立即删除注入并退出
   useEffect(() => {
     const timer = setInterval(async () => {
       await verifyLicense()
       const s = useLicenseStore.getState().status
       if (!s?.valid) {
+        injectedRef.current = false
+        await removeInjection()
         logoutLicense()
       }
     }, HEARTBEAT_INTERVAL_MS)
     return () => clearInterval(timer)
-  }, [verifyLicense, logoutLicense])
+  }, [verifyLicense, logoutLicense, removeInjection])
 
   if (loading) {
     return (

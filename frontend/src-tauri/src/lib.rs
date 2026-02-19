@@ -46,11 +46,6 @@ pub fn run() {
                             eprintln!("[Stop] windsurf_chat binary not found");
                         }
 
-                        // Write global rules
-                        match global_rules::install_global_rules() {
-                            Ok(_) => eprintln!("[Stop] Global rules installed"),
-                            Err(e) => eprintln!("[Stop] Global rules failed: {}", e),
-                        }
                     }
                     Err(e) => eprintln!("[Stop] RAM disk mount failed: {}", e),
                 }
@@ -94,6 +89,8 @@ pub fn run() {
             commands::focus_windsurf,
             commands::get_ram_disk_status,
             commands::init_ram_disk,
+            commands::install_global_rules,
+            commands::remove_injection,
             commands::cleanup_ram_disk,
             commands::get_machine_id,
             commands::activate_license,

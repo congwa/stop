@@ -173,10 +173,7 @@ pub async fn init_ram_disk(
             eprintln!("[Stop] windsurf_chat binary not found next to app");
         }
 
-        // 3. Write global rules
-        global_rules::install_global_rules()?;
-
-        // 4. Write sentinel file
+        // 3. Write sentinel file
         sentinel::write()?;
 
         // 5. Install LaunchAgent
@@ -194,6 +191,20 @@ pub async fn init_ram_disk(
             launch_agent_installed: launchagent::is_installed(),
             path: ram_disk::ram_disk_path().to_string_lossy().to_string(),
         })
+    }).await.map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn install_global_rules() -> Result<(), String> {
+    tokio::task::spawn_blocking(|| {
+        global_rules::install_global_rules()
+    }).await.map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn remove_injection() -> Result<(), String> {
+    tokio::task::spawn_blocking(|| {
+        global_rules::remove_global_rules()
     }).await.map_err(|e| e.to_string())?
 }
 

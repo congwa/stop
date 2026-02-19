@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.8.1] - 2026-02-19
+
+### 核心亮点
+
+注入流程安全加固：License 验证通过后才执行注入，过期/退出立即清除注入
+
+### Fixed
+- 注入生命周期修复：不再在启动时立即注入 global_rules，改为 License 验证成功后才注入
+- 密钥过期后立即调用 `remove_injection` 删除 `~/.codeium/windsurf/memories/global_rules.md`
+- 退出软件时清除所有注入设置（已有的 `on_window_event` 机制保持不变）
+
+### Added
+- License 明文密钥存储：后台可查看 Key 原始值
+- 短期测试类型 License 支持
+- 管理面板 KeyList 一键复制 License Key 功能
+- 新 Tauri 命令 `install_global_rules` / `remove_injection`：精细控制注入与清除
+
+### Changed
+- `init_ram_disk` 命令不再安装全局规则，专注基础设施（RAM 磁盘 + 二进制）
+- `LicenseGate` 接管注入生命周期，通过 `injectedRef` 避免重复注入
+
 ## [0.8.0] - 2025-02-19
 
 ### 核心亮点
