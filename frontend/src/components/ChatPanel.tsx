@@ -36,9 +36,10 @@ export function ChatPanel() {
     autoModeInfo,
     ramDiskStatus,
     ramDiskInitializing,
+    globalRulesInstalling,
     startServer,
     stopServer,
-    initRamDisk,
+    reinitialize,
   } = useChatStore()
 
   const isRunning = serverStatus?.running ?? false
@@ -80,7 +81,7 @@ export function ChatPanel() {
 
       {/* RAM Disk status bar */}
       <div className="px-4 pt-2 shrink-0">
-        <RamDiskStatusBar status={ramDiskStatus} initializing={ramDiskInitializing} onRetry={initRamDisk} />
+        <RamDiskStatusBar status={ramDiskStatus} initializing={ramDiskInitializing || globalRulesInstalling} onRetry={reinitialize} />
       </div>
 
       {/* Main content */}

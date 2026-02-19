@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.8.3] - 2026-02-19
+
+### 核心亮点
+
+将初始化流程从并发改为严格线性顺序，从根本上消除竞态条件
+
+### Fixed
+- 彻底修复竞态条件：初始化流程改为 `verifyLicense` → `initRamDisk` → `installGlobalRules` 严格顺序
+- 无密钥或密钥过期时，`initRamDisk` 和 `installGlobalRules` 均不会被调用
+
+### Changed
+- `App.tsx` 不再直接调用 `initRamDisk`，由 `LicenseGate` 统一管控全部初始化序列
+- `LicenseGate` 新增线性初始化：`status.valid` 变为 true 后顺序执行 `initRamDisk().then(installGlobalRules)`
+- `useChatStore` 新增 `reinitialize()` 动作（顺序执行，用于重试按钮）
+- `RamDiskStatusBar` 重试按钮改用 `reinitialize`，确保重试也是顺序执行
+
 ## [0.8.2] - 2026-02-19
 
 ### 核心亮点

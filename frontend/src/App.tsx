@@ -8,7 +8,7 @@ export default function App() {
   const {
     addPending, removePending, markDisconnected, markCompleted,
     refreshStatus, refreshPending, refreshAutoMode,
-    initRamDisk, refreshRamDiskStatus,
+    refreshRamDiskStatus,
   } = useChatStore()
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
@@ -50,8 +50,6 @@ export default function App() {
   useEffect(() => {
     refreshStatus()
     refreshAutoMode()
-    // Init RAM disk (mount + install binary + global rules)
-    initRamDisk()
 
     pollingRef.current = setInterval(() => {
       refreshStatus()
@@ -67,7 +65,7 @@ export default function App() {
       if (pollingRef.current) clearInterval(pollingRef.current)
       clearInterval(autoRef)
     }
-  }, [refreshStatus, refreshPending, refreshAutoMode, initRamDisk, refreshRamDiskStatus])
+  }, [refreshStatus, refreshPending, refreshAutoMode, refreshRamDiskStatus])
 
   return (
     <LicenseGate>

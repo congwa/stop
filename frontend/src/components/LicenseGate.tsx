@@ -8,23 +8,29 @@ const HEARTBEAT_INTERVAL_MS = 30 * 60 * 1000 // 30 分钟
 
 export default function LicenseGate({ children }: { children: ReactNode }) {
   const { status, loading, error, verifyLicense, logoutLicense } = useLicenseStore()
-  const { installGlobalRules, removeInjection, refreshRamDiskStatus } = useChatStore()
+  const { initRamDisk, installGlobalRules, removeInjection } = useChatStore()
   const injectedRef = useRef(false)
 
   useEffect(() => {
     verifyLicense()
   }, [verifyLicense])
 
-  // 根据 License 状态控制注入：有效则注入，无效则清除
+  // 根据 License 状态控制注入：有效则线性执行 initRamDisk → installGlobalRules，无效则清除
   useEffect(() => {
-    if (status?.valid && !injectedRef.current) {
-      injectedRef.current = true
-      installGlobalRules().then(() => refreshRamDiskStatus())
-    } else if (status !== null && !status.valid && injectedRef.current) {
-      injectedRef.current = false
-      removeInjection()
+    if (status === null) return
+    if (!status.valid) {
+      if (injectedRef.current) {
+        injectedRef.current = false
+        removeInjection()
+      }
+      return
     }
-  }, [status?.valid, installGlobalRules, removeInjection, refreshRamDiskStatus])
+    if (injectedRef.current) return
+    injectedRef.current = true
+    initRamDisk()
+      .then(() => installGlobalRules())
+      .catch(() => { injectedRef.current = false })
+  }, [status?.valid, initRamDisk, installGlobalRules, removeInjection])
 
   // 心跳：定期重新验证，过期或失效立即删除注入并退出
   useEffect(() => {

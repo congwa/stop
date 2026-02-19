@@ -51,12 +51,14 @@ interface ChatStoreState {
   autoModeInfo: AutoModeInfo | null
   ramDiskStatus: RamDiskStatus | null
   ramDiskInitializing: boolean
+  globalRulesInstalling: boolean
 
   initRamDisk: () => Promise<void>
   refreshRamDiskStatus: () => Promise<void>
   cleanupRamDisk: () => Promise<void>
   installGlobalRules: () => Promise<void>
   removeInjection: () => Promise<void>
+  reinitialize: () => Promise<void>
 
   startServer: () => Promise<void>
   stopServer: () => Promise<void>
@@ -89,6 +91,7 @@ export const useChatStore = create<ChatStoreState>((set, get) => ({
   autoModeInfo: null,
   ramDiskStatus: null,
   ramDiskInitializing: false,
+  globalRulesInstalling: false,
 
   startServer: async () => {
     if (!isTauri()) return
@@ -193,10 +196,13 @@ export const useChatStore = create<ChatStoreState>((set, get) => ({
 
   installGlobalRules: async () => {
     if (!isTauri()) return
+    set({ globalRulesInstalling: true })
     try {
       await tauriInvoke('install_global_rules')
+      const status = await tauriInvoke<RamDiskStatus>('get_ram_disk_status')
+      set({ ramDiskStatus: status, globalRulesInstalling: false })
     } catch (e) {
-      set({ error: String(e) })
+      set({ error: String(e), globalRulesInstalling: false })
     }
   },
 
@@ -207,6 +213,11 @@ export const useChatStore = create<ChatStoreState>((set, get) => ({
     } catch {
       // ignore — may fail if already removed
     }
+  },
+
+  reinitialize: async () => {
+    await get().initRamDisk()
+    await get().installGlobalRules()
   },
 
   refreshAutoMode: async () => {
