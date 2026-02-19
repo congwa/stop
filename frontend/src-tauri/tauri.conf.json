@@ -6,8 +6,7 @@
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "npm run build",
-    "beforeBundleCommand": "cargo build --release --bin windsurf_chat && mkdir -p binaries && cp target/release/windsurf_chat \"binaries/windsurf_chat-$(rustc -Vv | grep host | cut -d' ' -f2)\"",
+    "beforeBuildCommand": "npm run build && cargo build --release --manifest-path windsurf_chat/Cargo.toml && mkdir -p src-tauri/binaries && cp windsurf_chat/target/release/windsurf_chat \"src-tauri/binaries/windsurf_chat-$(rustc -Vv | grep host | cut -d' ' -f2)\"",
     "frontendDist": "../dist"
   },
   "app": {
