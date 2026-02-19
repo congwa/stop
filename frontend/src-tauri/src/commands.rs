@@ -1,4 +1,4 @@
-use crate::{cascade_api, chat_server, chat_workspace, focus};
+use crate::{cascade_api, chat_server, chat_workspace, focus, global_rules, launchagent, ram_disk, sentinel};
 use crate::chat_server::SharedState;
 
 // ===== Auto Mode =====
@@ -132,6 +132,79 @@ pub async fn setup_chat_workspace(
     chat_server::write_port_files(shared);
 
     Ok(())
+}
+
+// ===== RAM Disk / Global Setup =====
+
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct RamDiskStatus {
+    pub mounted: bool,
+    pub binary_installed: bool,
+    pub global_rules_installed: bool,
+    pub launch_agent_installed: bool,
+    pub path: String,
+}
+
+#[tauri::command]
+pub fn get_ram_disk_status() -> RamDiskStatus {
+    let mounted = ram_disk::is_mounted();
+    RamDiskStatus {
+        mounted,
+        binary_installed: mounted && ram_disk::binary_path().exists(),
+        global_rules_installed: global_rules::is_installed(),
+        launch_agent_installed: launchagent::is_installed(),
+        path: ram_disk::ram_disk_path().to_string_lossy().to_string(),
+    }
+}
+
+#[tauri::command]
+pub async fn init_ram_disk(
+    state: tauri::State<'_, SharedState>,
+) -> Result<RamDiskStatus, String> {
+    let shared = state.inner().clone();
+    tokio::task::spawn_blocking(move || {
+        // 1. Mount RAM disk
+        ram_disk::mount()?;
+
+        // 2. Install windsurf_chat binary
+        if let Some(src) = ram_disk::find_app_binary() {
+            ram_disk::install_binary(&src)?;
+        } else {
+            eprintln!("[Stop] windsurf_chat binary not found next to app");
+        }
+
+        // 3. Write global rules
+        global_rules::install_global_rules()?;
+
+        // 4. Write sentinel file
+        sentinel::write()?;
+
+        // 5. Install LaunchAgent
+        if !launchagent::is_installed() {
+            launchagent::install()?;
+        }
+
+        // 6. Write port to RAM disk
+        chat_server::write_port_files(shared);
+
+        Ok(RamDiskStatus {
+            mounted: true,
+            binary_installed: ram_disk::binary_path().exists(),
+            global_rules_installed: global_rules::is_installed(),
+            launch_agent_installed: launchagent::is_installed(),
+            path: ram_disk::ram_disk_path().to_string_lossy().to_string(),
+        })
+    }).await.map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn cleanup_ram_disk() -> Result<(), String> {
+    tokio::task::spawn_blocking(|| {
+        sentinel::remove()?;
+        global_rules::remove_global_rules()?;
+        ram_disk::eject()?;
+        Ok(())
+    }).await.map_err(|e| e.to_string())?
 }
 
 // ===== Focus =====

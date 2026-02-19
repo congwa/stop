@@ -28,6 +28,14 @@ export interface AutoModeInfo {
   auto_continue_enabled: boolean
 }
 
+export interface RamDiskStatus {
+  mounted: boolean
+  binary_installed: boolean
+  global_rules_installed: boolean
+  launch_agent_installed: boolean
+  path: string
+}
+
 // ============================================================
 // Store
 // ============================================================
@@ -41,6 +49,12 @@ interface ChatStoreState {
   respondedIds: Map<string, number>
 
   autoModeInfo: AutoModeInfo | null
+  ramDiskStatus: RamDiskStatus | null
+  ramDiskInitializing: boolean
+
+  initRamDisk: () => Promise<void>
+  refreshRamDiskStatus: () => Promise<void>
+  cleanupRamDisk: () => Promise<void>
 
   startServer: () => Promise<void>
   stopServer: () => Promise<void>
@@ -71,6 +85,8 @@ export const useChatStore = create<ChatStoreState>((set, get) => ({
   pendingPrompts: [],
   respondedIds: new Map(),
   autoModeInfo: null,
+  ramDiskStatus: null,
+  ramDiskInitializing: false,
 
   startServer: async () => {
     if (!isTauri()) return
@@ -139,6 +155,37 @@ export const useChatStore = create<ChatStoreState>((set, get) => ({
       })
     } catch {
       // ignore
+    }
+  },
+
+  initRamDisk: async () => {
+    if (!isTauri()) return
+    set({ ramDiskInitializing: true })
+    try {
+      const status = await tauriInvoke<RamDiskStatus>('init_ram_disk')
+      set({ ramDiskStatus: status, ramDiskInitializing: false })
+    } catch (e) {
+      set({ error: String(e), ramDiskInitializing: false })
+    }
+  },
+
+  refreshRamDiskStatus: async () => {
+    if (!isTauri()) return
+    try {
+      const status = await tauriInvoke<RamDiskStatus>('get_ram_disk_status')
+      set({ ramDiskStatus: status })
+    } catch {
+      // ignore
+    }
+  },
+
+  cleanupRamDisk: async () => {
+    if (!isTauri()) return
+    try {
+      await tauriInvoke('cleanup_ram_disk')
+      set({ ramDiskStatus: null })
+    } catch (e) {
+      set({ error: String(e) })
     }
   },
 

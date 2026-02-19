@@ -4,14 +4,11 @@ import { cn } from '@/lib/utils'
 import {
   Play,
   Square,
-  FolderOpen,
   Zap,
   Server,
   CheckCircle2,
   XCircle,
   Loader2,
-  ChevronDown,
-  ChevronUp,
   ShieldAlert,
   Send,
   SkipForward,
@@ -20,6 +17,8 @@ import {
   Clock,
   WifiOff,
   AlertTriangle,
+  HardDrive,
+  RefreshCw,
 } from 'lucide-react'
 
 // ============================================================
@@ -33,13 +32,14 @@ export function ChatPanel() {
     pendingPrompts,
     respondedIds,
     autoModeInfo,
+    ramDiskStatus,
+    ramDiskInitializing,
     startServer,
     stopServer,
+    initRamDisk,
   } = useChatStore()
 
   const isRunning = serverStatus?.running ?? false
-
-  // Show only the latest (first) prompt — single conversation mode
   const latestPrompt = pendingPrompts[0] ?? null
   const isResponded = latestPrompt ? respondedIds.has(latestPrompt.request_id) : false
 
@@ -49,41 +49,27 @@ export function ChatPanel() {
       <header className="border-b bg-card px-4 py-3 flex items-center justify-between shrink-0">
         <div>
           <h1 className="text-base font-bold text-foreground">Stop · AI 对话反馈</h1>
-          <p className="text-xs text-muted-foreground mt-0.5">暂停 AI 对话，精准反馈指令</p>
+          <p className="text-xs text-muted-foreground mt-0.5">全局规则 · 自动生效 · 退出即清理</p>
         </div>
         <div className="flex items-center gap-2">
-          {/* Auto mode badge */}
           {autoModeInfo && <AutoModeBadge policy={autoModeInfo.auto_execution_policy} />}
-          {/* Server status */}
           <ServerStatusBadge running={isRunning} />
-          {/* Start/Stop */}
           {isRunning ? (
-            <button
-              onClick={stopServer}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors"
-            >
-              <Square className="h-3.5 w-3.5" />
-              停止
+            <button onClick={stopServer} className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors">
+              <Square className="h-3.5 w-3.5" />停止
             </button>
           ) : (
-            <button
-              onClick={startServer}
-              disabled={isStarting}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
-            >
-              <Play className="h-3.5 w-3.5" />
-              {isStarting ? '启动中...' : '启动'}
+            <button onClick={startServer} disabled={isStarting} className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50">
+              <Play className="h-3.5 w-3.5" />{isStarting ? '启动中...' : '启动'}
             </button>
           )}
         </div>
       </header>
 
-      {/* Workspace setup */}
-      {isRunning && (
-        <div className="px-4 pt-3 shrink-0">
-          <WorkspaceSetup />
-        </div>
-      )}
+      {/* RAM Disk status bar */}
+      <div className="px-4 pt-2 shrink-0">
+        <RamDiskStatusBar status={ramDiskStatus} initializing={ramDiskInitializing} onRetry={initRamDisk} />
+      </div>
 
       {/* Main content */}
       <div className="flex-1 overflow-auto p-4">
@@ -132,6 +118,74 @@ function AutoModeBadge({ policy }: { policy: string }) {
 }
 
 // ============================================================
+// RAM Disk Status Bar
+// ============================================================
+
+function RamDiskStatusBar({
+  status, initializing, onRetry
+}: {
+  status: ReturnType<typeof useChatStore.getState>['ramDiskStatus']
+  initializing: boolean
+  onRetry: () => void
+}) {
+  if (initializing) {
+    return (
+      <div className="flex items-center gap-2 px-3 py-2 rounded-md border border-border bg-muted/30 text-xs text-muted-foreground">
+        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        正在初始化 RAM Disk 和全局规则...
+      </div>
+    )
+  }
+
+  if (!status) {
+    return (
+      <div className="flex items-center justify-between px-3 py-2 rounded-md border border-amber-500/20 bg-amber-500/5 text-xs">
+        <div className="flex items-center gap-2 text-amber-600">
+          <HardDrive className="h-3.5 w-3.5" />
+          RAM Disk 未初始化
+        </div>
+        <button onClick={onRetry} className="flex items-center gap-1 text-amber-600 hover:text-amber-700 transition-colors">
+          <RefreshCw className="h-3 w-3" />重试
+        </button>
+      </div>
+    )
+  }
+
+  const allGood = status.mounted && status.binary_installed && status.global_rules_installed
+
+  if (allGood) {
+    return (
+      <div className="flex items-center gap-2 px-3 py-2 rounded-md border border-emerald-500/20 bg-emerald-500/5 text-xs">
+        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+        <span className="text-emerald-600 font-medium">全局规则已激活</span>
+        <span className="text-muted-foreground ml-1">所有 Windsurf 项目自动生效，退出即清理</span>
+        {!status.launch_agent_installed && (
+          <span className="text-amber-500 ml-auto">(LaunchAgent 未安装)</span>
+        )}
+      </div>
+    )
+  }
+
+  const issues = [
+    !status.mounted && 'RAM Disk 未挂载',
+    status.mounted && !status.binary_installed && '二进制未安装',
+    !status.global_rules_installed && '全局规则未写入',
+  ].filter(Boolean)
+
+  return (
+    <div className="flex items-center justify-between px-3 py-2 rounded-md border border-amber-500/20 bg-amber-500/5 text-xs">
+      <div className="flex items-center gap-2 text-amber-600">
+        <AlertTriangle className="h-3.5 w-3.5" />
+        {issues.join(' · ')}
+      </div>
+      <button onClick={onRetry} className="flex items-center gap-1 text-amber-600 hover:text-amber-700 transition-colors">
+        <RefreshCw className="h-3 w-3" />重新初始化
+      </button>
+    </div>
+  )
+}
+
+// ============================================================
 // Empty States
 // ============================================================
 
@@ -153,108 +207,6 @@ function EmptyServer() {
       <Server className="h-16 w-16 mb-6 opacity-20" />
       <p className="text-xl font-medium">服务启动中...</p>
       <p className="text-sm mt-2 text-muted-foreground/70">请稍等</p>
-    </div>
-  )
-}
-
-// ============================================================
-// Workspace Setup
-// ============================================================
-
-function WorkspaceSetup() {
-  const setupWorkspace = useChatStore((s) => s.setupWorkspace)
-  const [selectedPath, setSelectedPath] = useState<string | null>(null)
-  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
-  const [errorMsg, setErrorMsg] = useState('')
-  const [expanded, setExpanded] = useState(true)
-
-  const handleSelectAndSetup = useCallback(async () => {
-    try {
-      const { open } = await import('@tauri-apps/plugin-dialog')
-      const selected = await open({ directory: true, multiple: false, title: '选择项目目录' })
-      if (!selected) return
-      const dir = selected as string
-      setSelectedPath(dir)
-      setStatus('loading')
-      setErrorMsg('')
-      try {
-        await setupWorkspace(dir)
-        setStatus('success')
-        setTimeout(() => setExpanded(false), 1500)
-      } catch (e: unknown) {
-        setStatus('error')
-        setErrorMsg(String(e))
-      }
-    } catch {
-      // User cancelled
-    }
-  }, [setupWorkspace])
-
-  if (status === 'success' && !expanded) {
-    return (
-      <div
-        className="flex items-center gap-2 px-3 py-2 rounded-md border border-emerald-500/20 bg-emerald-500/5 cursor-pointer hover:bg-emerald-500/10 transition-colors"
-        onClick={() => setExpanded(true)}
-      >
-        <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
-        <span className="text-sm text-emerald-500 font-medium">工作区已初始化</span>
-        <span className="text-xs text-muted-foreground font-mono truncate flex-1">{selectedPath}</span>
-        <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-      </div>
-    )
-  }
-
-  return (
-    <div className="rounded-md border px-3 py-2.5 space-y-2">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <FolderOpen className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm font-medium">初始化工作区</span>
-          {status === 'success' && (
-            <span className="text-xs text-emerald-500 flex items-center gap-1">
-              <CheckCircle2 className="h-3.5 w-3.5" />已完成
-            </span>
-          )}
-          {status === 'error' && (
-            <span className="text-xs text-red-500 flex items-center gap-1">
-              <XCircle className="h-3.5 w-3.5" />失败
-            </span>
-          )}
-        </div>
-        {status === 'success' && (
-          <button onClick={() => setExpanded(false)} className="text-muted-foreground hover:text-foreground transition-colors" title="收起">
-            <ChevronUp className="h-4 w-4" />
-          </button>
-        )}
-      </div>
-
-      <div className="flex items-center gap-2">
-        <button
-          onClick={handleSelectAndSetup}
-          disabled={status === 'loading'}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border border-border hover:bg-muted/50 transition-colors disabled:opacity-50"
-        >
-          {status === 'loading' ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          ) : (
-            <FolderOpen className="h-3.5 w-3.5" />
-          )}
-          {status === 'loading' ? '初始化中...' : '选择目录并初始化'}
-        </button>
-        {selectedPath && (
-          <span className="text-xs text-muted-foreground font-mono truncate flex-1">{selectedPath}</span>
-        )}
-      </div>
-
-      {status === 'success' && (
-        <p className="text-xs text-emerald-500">已创建 .wdm/ 目录和 .windsurfrules 文件</p>
-      )}
-      {status === 'error' && (
-        <p className="text-xs text-red-500">{errorMsg || '初始化失败'}</p>
-      )}
-      {status === 'idle' && (
-        <p className="text-xs text-muted-foreground">选择需要启用 AI 对话反馈的项目目录，将自动完成初始化</p>
-      )}
     </div>
   )
 }

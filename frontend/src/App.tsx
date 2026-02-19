@@ -4,7 +4,11 @@ import { isTauri } from '@/lib/tauri'
 import { ChatPanel } from '@/components/ChatPanel'
 
 export default function App() {
-  const { addPending, removePending, markDisconnected, markCompleted, refreshStatus, refreshPending, refreshAutoMode, startServer } = useChatStore()
+  const {
+    addPending, removePending, markDisconnected, markCompleted,
+    refreshStatus, refreshPending, refreshAutoMode,
+    initRamDisk, refreshRamDiskStatus,
+  } = useChatStore()
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   // Listen for Tauri events
@@ -41,20 +45,18 @@ export default function App() {
     return () => { unlisten?.() }
   }, [addPending, removePending, markDisconnected, markCompleted, refreshAutoMode])
 
-  // Initial load and polling
+  // Initial load: server starts automatically in Rust, RAM disk auto-initialized
   useEffect(() => {
-    refreshStatus().then(async () => {
-      const { serverStatus } = useChatStore.getState()
-      if (!serverStatus?.running) {
-        await startServer()
-      }
-    })
+    refreshStatus()
     refreshAutoMode()
+    // Init RAM disk (mount + install binary + global rules)
+    initRamDisk()
 
     pollingRef.current = setInterval(() => {
       refreshStatus()
       refreshPending()
-    }, 3000)
+      refreshRamDiskStatus()
+    }, 5000)
 
     const autoRef = setInterval(() => {
       refreshAutoMode()
@@ -64,7 +66,7 @@ export default function App() {
       if (pollingRef.current) clearInterval(pollingRef.current)
       clearInterval(autoRef)
     }
-  }, [refreshStatus, refreshPending, refreshAutoMode, startServer])
+  }, [refreshStatus, refreshPending, refreshAutoMode, initRamDisk, refreshRamDiskStatus])
 
   return (
     <div className="min-h-screen bg-background">

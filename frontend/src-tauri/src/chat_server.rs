@@ -189,6 +189,9 @@ pub fn set_workspace_paths(state: SharedState, paths: Vec<PathBuf>) {
 pub fn write_port_files(state: SharedState) {
     let s = state.lock().unwrap();
     if s.port == 0 { return; }
+    // Write port to RAM disk (primary)
+    let _ = crate::ram_disk::write_port(s.port);
+    // Also write to each workspace .wdm/ dir (fallback for windsurf_chat)
     for wp in &s.workspace_paths {
         let dir = wp.join(".wdm");
         let _ = std::fs::create_dir_all(&dir);
