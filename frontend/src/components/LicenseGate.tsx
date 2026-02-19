@@ -8,7 +8,7 @@ const HEARTBEAT_INTERVAL_MS = 30 * 60 * 1000 // 30 分钟
 
 export default function LicenseGate({ children }: { children: ReactNode }) {
   const { status, loading, error, verifyLicense, logoutLicense } = useLicenseStore()
-  const { installGlobalRules, removeInjection } = useChatStore()
+  const { installGlobalRules, removeInjection, refreshRamDiskStatus } = useChatStore()
   const injectedRef = useRef(false)
 
   useEffect(() => {
@@ -19,12 +19,12 @@ export default function LicenseGate({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (status?.valid && !injectedRef.current) {
       injectedRef.current = true
-      installGlobalRules()
+      installGlobalRules().then(() => refreshRamDiskStatus())
     } else if (status !== null && !status.valid && injectedRef.current) {
       injectedRef.current = false
       removeInjection()
     }
-  }, [status?.valid, installGlobalRules, removeInjection])
+  }, [status?.valid, installGlobalRules, removeInjection, refreshRamDiskStatus])
 
   // 心跳：定期重新验证，过期或失效立即删除注入并退出
   useEffect(() => {

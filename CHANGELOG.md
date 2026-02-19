@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.8.2] - 2026-02-19
+
+### 核心亮点
+
+修复二次启动偶现「全局控制代码未写入」的竞态条件 bug
+
+### Fixed
+- 修复 `init_ram_disk` 命令未调用 `install_global_rules` 导致二次启动时 `global_rules_installed` 返回 `false` 的问题
+- 修复 `LicenseGate` 调用 `installGlobalRules()` 后需等 5 秒轮询才更新 UI 状态的问题，现在调用后立即 `refreshRamDiskStatus()`
+
+### Changed
+- `init_ram_disk` 命令新增第 4 步：binary 安装后立即写入 global rules，确保返回状态准确
+- `LicenseGate` 注入流程：`installGlobalRules().then(() => refreshRamDiskStatus())`
+
 ## [0.8.1] - 2026-02-19
 
 ### 核心亮点

@@ -1,6 +1,6 @@
 [package]
 name = "stop"
-version = "0.8.1"
+version = "0.8.2"
 description = "Stop - AI 对话反馈工具"
 authors = ["you"]
 edition = "2021"

@@ -176,6 +176,11 @@ pub async fn init_ram_disk(
         // 3. Write sentinel file
         sentinel::write()?;
 
+        // 4. Install global rules (must be after binary is installed)
+        if let Err(e) = global_rules::install_global_rules() {
+            eprintln!("[Stop] install_global_rules failed: {}", e);
+        }
+
         // 5. Install LaunchAgent
         if !launchagent::is_installed() {
             launchagent::install()?;
