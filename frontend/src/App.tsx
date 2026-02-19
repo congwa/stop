@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { useChatStore, type PendingPrompt } from '@/store/useChatStore'
 import { isTauri } from '@/lib/tauri'
 import { ChatPanel } from '@/components/ChatPanel'
+import LicenseGate from '@/components/LicenseGate'
 
 export default function App() {
   const {
@@ -69,8 +70,10 @@ export default function App() {
   }, [refreshStatus, refreshPending, refreshAutoMode, initRamDisk, refreshRamDiskStatus])
 
   return (
-    <div className="min-h-screen bg-background">
-      <ChatPanel />
-    </div>
+    <LicenseGate>
+      <div className="min-h-screen bg-background">
+        <ChatPanel />
+      </div>
+    </LicenseGate>
   )
 }

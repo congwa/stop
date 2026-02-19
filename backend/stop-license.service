@@ -1,0 +1,16 @@
+[Unit]
+Description=Stop License Server
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/opt/stop-license/backend
+ExecStart=/opt/stop-license/venv/bin/uvicorn main:app --host 0.0.0.0 --port 17771 --workers 2
+Restart=always
+RestartSec=5
+Environment=PYTHONUNBUFFERED=1
+EnvironmentFile=/opt/stop-license/.env
+
+[Install]
+WantedBy=multi-user.target

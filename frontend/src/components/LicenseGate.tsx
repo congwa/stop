@@ -1,0 +1,48 @@
+import { useEffect, ReactNode } from 'react'
+import { useLicenseStore } from '../store/useLicenseStore'
+import ActivationPage from './ActivationPage'
+import { Loader2, WifiOff } from 'lucide-react'
+
+export default function LicenseGate({ children }: { children: ReactNode }) {
+  const { status, loading, error, verifyLicense } = useLicenseStore()
+
+  useEffect(() => {
+    verifyLicense()
+  }, [verifyLicense])
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="flex flex-col items-center gap-3 text-slate-400">
+          <Loader2 size={32} className="animate-spin" />
+          <p className="text-sm">正在验证授权...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Network error (not invalid key - just can't reach server)
+  if (error && !status) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="flex flex-col items-center gap-4 max-w-sm text-center px-6">
+          <WifiOff size={40} className="text-slate-300" />
+          <p className="text-lg font-semibold text-slate-700">无法连接授权服务器</p>
+          <p className="text-slate-400 text-sm">{error}</p>
+          <button
+            onClick={verifyLicense}
+            className="mt-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-medium transition-colors"
+          >
+            重试
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  if (!status?.valid) {
+    return <ActivationPage />
+  }
+
+  return <>{children}</>
+}

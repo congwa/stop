@@ -5,6 +5,7 @@ pub mod commands;
 pub mod focus;
 pub mod global_rules;
 pub mod launchagent;
+pub mod license;
 pub mod ram_disk;
 pub mod sentinel;
 
@@ -94,6 +95,9 @@ pub fn run() {
             commands::get_ram_disk_status,
             commands::init_ram_disk,
             commands::cleanup_ram_disk,
+            commands::get_machine_id,
+            commands::activate_license,
+            commands::verify_license,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

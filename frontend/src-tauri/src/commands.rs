@@ -1,4 +1,4 @@
-use crate::{cascade_api, chat_server, chat_workspace, focus, global_rules, launchagent, ram_disk, sentinel};
+use crate::{cascade_api, chat_server, chat_workspace, focus, global_rules, launchagent, license, ram_disk, sentinel};
 use crate::chat_server::SharedState;
 
 // ===== Auto Mode =====
@@ -212,4 +212,25 @@ pub async fn cleanup_ram_disk() -> Result<(), String> {
 #[tauri::command]
 pub fn focus_windsurf() -> Result<(), String> {
     focus::focus_windsurf()
+}
+
+// ===== License =====
+
+#[tauri::command]
+pub fn get_machine_id() -> String {
+    license::get_machine_id()
+}
+
+#[tauri::command]
+pub async fn activate_license(key: String) -> Result<license::LicenseStatus, String> {
+    tokio::task::spawn_blocking(move || license::activate_license(&key))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn verify_license() -> Result<license::LicenseStatus, String> {
+    tokio::task::spawn_blocking(|| license::verify_license())
+        .await
+        .map_err(|e| e.to_string())?
 }
