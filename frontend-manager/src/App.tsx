@@ -27,7 +27,8 @@ function App() {
 
   return (
     <div className="flex h-screen bg-slate-100">
-      <aside className="w-56 bg-white border-r border-slate-100 flex flex-col">
+      {/* Desktop sidebar */}
+      <aside className="hidden md:flex w-56 bg-white border-r border-slate-100 flex-col flex-shrink-0">
         <div className="px-5 py-5 border-b border-slate-100">
           <h1 className="font-bold text-lg text-slate-800">Stop Admin</h1>
           <p className="text-xs text-slate-400 mt-0.5">License 管理系统</p>
@@ -61,11 +62,48 @@ function App() {
           </button>
         </div>
       </aside>
-      <main className="flex-1 overflow-y-auto">
+
+      {/* Main content */}
+      <main className="flex-1 overflow-y-auto pb-16 md:pb-0">
+        {/* Mobile top header */}
+        <div className="md:hidden flex items-center justify-between px-4 py-3 bg-white border-b border-slate-100 sticky top-0 z-10">
+          <div>
+            <h1 className="font-bold text-base text-slate-800">Stop Admin</h1>
+          </div>
+          <button
+            onClick={logout}
+            className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-red-600 transition-colors px-2 py-1 rounded-lg hover:bg-red-50"
+          >
+            <LogOut size={14} />
+            退出
+          </button>
+        </div>
+
         {page === 'dashboard' && <Dashboard />}
         {page === 'keys' && <KeyList />}
         {page === 'generate' && <GenerateKeys />}
       </main>
+
+      {/* Mobile bottom tab bar */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 flex z-20">
+        {NAV.map(n => {
+          const Icon = n.icon
+          return (
+            <button
+              key={n.id}
+              onClick={() => setPage(n.id)}
+              className={`flex-1 flex flex-col items-center justify-center py-2 gap-0.5 text-xs font-medium transition-colors ${
+                page === n.id
+                  ? 'text-indigo-600'
+                  : 'text-slate-400'
+              }`}
+            >
+              <Icon size={20} />
+              {n.label}
+            </button>
+          )
+        })}
+      </nav>
     </div>
   )
 }

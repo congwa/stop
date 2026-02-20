@@ -25,7 +25,7 @@ export default function Login({ onLogin }: { onLogin: () => void }) {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-100">
-      <div className="bg-white rounded-2xl shadow-lg p-10 w-full max-w-sm">
+      <div className="bg-white rounded-2xl shadow-lg p-6 md:p-10 w-full max-w-sm mx-4">
         <div className="flex flex-col items-center mb-8">
           <div className="w-14 h-14 rounded-full bg-indigo-600 flex items-center justify-center mb-3">
             <KeyRound className="text-white" size={26} />

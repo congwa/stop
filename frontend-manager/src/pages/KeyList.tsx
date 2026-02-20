@@ -68,9 +68,9 @@ export default function KeyList() {
   const totalPages = Math.ceil(total / pageSize)
 
   return (
-    <div className="p-8">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-bold text-slate-800">Key 列表</h2>
+    <div className="p-4 md:p-8">
+      <div className="flex items-center justify-between mb-4 md:mb-6">
+        <h2 className="text-lg md:text-xl font-bold text-slate-800">Key 列表</h2>
         <p className="text-sm text-slate-400">共 {total} 条</p>
       </div>
 
@@ -90,7 +90,80 @@ export default function KeyList() {
         ))}
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
+      {/* Mobile card list */}
+      <div className="md:hidden space-y-3">
+        {loading ? (
+          <div className="py-10 text-center text-slate-400">加载中...</div>
+        ) : items.length === 0 ? (
+          <div className="py-10 text-center text-slate-400">暂无数据</div>
+        ) : items.map(item => {
+          const s = STATUS_LABELS[item.status] || STATUS_LABELS.unactivated
+          return (
+            <div key={item.id} className="bg-white rounded-xl border border-slate-100 shadow-sm p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-slate-400">#{item.id}</span>
+                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${s.className}`}>{s.label}</span>
+              </div>
+              {item.plain_key && (
+                <div className="flex items-center gap-2 bg-slate-50 rounded-lg px-3 py-2">
+                  <span className="font-mono text-xs text-slate-700 flex-1 break-all select-all">{item.plain_key}</span>
+                  <button
+                    onClick={() => copyKey(item.id, item.plain_key!)}
+                    className="text-slate-400 hover:text-indigo-600 transition-colors flex-shrink-0"
+                  >
+                    {copiedId === item.id ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
+                  </button>
+                </div>
+              )}
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
+                <div>
+                  <span className="text-slate-400">类型</span>
+                  <p className="text-slate-700 font-medium">{item.key_type}</p>
+                </div>
+                <div>
+                  <span className="text-slate-400">到期日</span>
+                  <p className="text-slate-700 font-medium">{item.expiry_date || '—'}</p>
+                </div>
+                <div>
+                  <span className="text-slate-400">激活时间</span>
+                  <p className="text-slate-700">{item.activated_at ? item.activated_at.slice(0, 16) : '—'}</p>
+                </div>
+                <div>
+                  <span className="text-slate-400">机器码</span>
+                  <p className="text-slate-700 font-mono truncate">{item.machine_id || '—'}</p>
+                </div>
+                {item.note && (
+                  <div className="col-span-2">
+                    <span className="text-slate-400">备注</span>
+                    <p className="text-slate-700">{item.note}</p>
+                  </div>
+                )}
+              </div>
+              <div className="flex gap-3 pt-1 border-t border-slate-50">
+                {!item.is_revoked && (
+                  <button
+                    onClick={() => revoke(item.id)}
+                    className="flex items-center gap-1.5 text-xs text-orange-500 hover:text-orange-700 transition-colors"
+                  >
+                    <Ban size={13} />
+                    吊销
+                  </button>
+                )}
+                <button
+                  onClick={() => del(item.id)}
+                  className="flex items-center gap-1.5 text-xs text-red-400 hover:text-red-600 transition-colors"
+                >
+                  <Trash2 size={13} />
+                  删除
+                </button>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Desktop table */}
+      <div className="hidden md:block bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
         {loading ? (
           <div className="p-8 text-center text-slate-400">加载中...</div>
         ) : items.length === 0 ? (

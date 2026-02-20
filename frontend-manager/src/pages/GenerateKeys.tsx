@@ -58,9 +58,9 @@ export default function GenerateKeys() {
   }
 
   return (
-    <div className="p-8 max-w-2xl">
-      <h2 className="text-xl font-bold text-slate-800 mb-6">批量生成 Key</h2>
-      <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-6 space-y-5">
+    <div className="p-4 md:p-8 md:max-w-2xl">
+      <h2 className="text-lg md:text-xl font-bold text-slate-800 mb-4 md:mb-6">批量生成 Key</h2>
+      <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-4 md:p-6 space-y-5">
         <div>
           <label className="block text-sm font-medium text-slate-600 mb-2">Key 类型</label>
           <div className="flex gap-2 flex-wrap">
@@ -79,7 +79,7 @@ export default function GenerateKeys() {
             ))}
           </div>
         </div>
-        <div className="flex gap-4">
+        <div className="flex flex-col sm:flex-row gap-4">
           <div className="flex-1">
             <label className="block text-sm font-medium text-slate-600 mb-1">数量 (1~500)</label>
             <input
@@ -113,7 +113,7 @@ export default function GenerateKeys() {
       </div>
 
       {keys.length > 0 && (
-        <div className="mt-6 bg-white rounded-xl border border-slate-100 shadow-sm p-6">
+        <div className="mt-6 bg-white rounded-xl border border-slate-100 shadow-sm p-4 md:p-6">
           <div className="flex items-center justify-between mb-4">
             <p className="font-medium text-slate-700">已生成 {keys.length} 个 Key</p>
             <div className="flex gap-2">

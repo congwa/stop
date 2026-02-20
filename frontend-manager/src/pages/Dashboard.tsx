@@ -29,13 +29,13 @@ export default function Dashboard() {
       .finally(() => setLoading(false))
   }, [])
 
-  if (loading) return <div className="p-8 text-slate-400">加载中...</div>
-  if (err) return <div className="p-8 text-red-500">{err}</div>
+  if (loading) return <div className="p-4 md:p-8 text-slate-400">加载中...</div>
+  if (err) return <div className="p-4 md:p-8 text-red-500">{err}</div>
   if (!stats) return null
 
   return (
-    <div className="p-8">
-      <h2 className="text-xl font-bold text-slate-800 mb-6">概览</h2>
+    <div className="p-4 md:p-8">
+      <h2 className="text-lg md:text-xl font-bold text-slate-800 mb-4 md:mb-6">概览</h2>
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
         <StatCard
           icon={<Users className="text-indigo-600" size={22} />}
