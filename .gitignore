@@ -133,6 +133,25 @@ target/
 # Docker
 .dockerignore
 
+# Rust
+target/
+Cargo.lock
+**/*.rs.bk
+
+# Tauri specific
+src-tauri/target/
+src-tauri/Cargo.lock
+frontend/src-tauri/gen/
+frontend/src-tauri/target/
+frontend/src-tauri/Cargo.lock
+frontend/src-tauri/target/*
+frontend/src-tauri/binaries/
+
 # Temporary files
 *.tmp
 *.temp
+rustup-init.exe
+
+# Backup directories
+*_backup/
+backup/

@@ -68,6 +68,23 @@ fn update_gitignore(workspace_path: &Path) -> Result<(), String> {
 /// replacing the hardcoded binary path with the workspace-relative path.
 fn generate_rules_content() -> String {
     let script_path = format!("./{}/windsurf_chat", LOCAL_DIR_NAME);
+    
+    #[cfg(target_os = "windows")]
+    let command_example = format!(
+        r#"```powershell
+& "{}" "返信完了 · フィードバックをお待ちしています" --context "ユーザーの最新のメッセージ（最初100文字）"
+```"#,
+        script_path
+    );
+    
+    #[cfg(not(target_os = "windows"))]
+    let command_example = format!(
+        r#"```bash
+"{}" "返信完了 · フィードバックをお待ちしています" --context "ユーザーの最新のメッセージ（最初100文字）"
+```"#,
+        script_path
+    );
+    
     format!(
 r#"=======================================================================
 重要システムルール - まずこれを読んでください
@@ -80,9 +97,7 @@ r#"=======================================================================
 
 ## スクリプトの呼び出し方方
 
-```bash
-"{script_path}" "返信完了 · フィードバックをお待ちしています" --context "ユーザーの最新のメッセージ（最初100文字）"
-```
+{}
 
 **パラメータ:**
 - 第一引数: 固定文字列、常に"返信完了 · フィードバックをお待ちしています"を使用
@@ -122,6 +137,7 @@ r#"=======================================================================
 =======================================================================
 trigger: always_on
 alwaysApply: true
-"#
+"#,
+        command_example
     )
 }
