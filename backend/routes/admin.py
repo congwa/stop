@@ -95,17 +95,13 @@ def generate_keys(
     if body.key_type not in KEY_TYPE_DAYS:
         raise HTTPException(status_code=400, detail=f"key_type 无效，可选: {list(KEY_TYPE_DAYS.keys())}")
 
-    days = KEY_TYPE_DAYS[body.key_type]
-    today = beijing_today()
-    expiry = None if days == 0xFFFF else today + timedelta(days=days)
-
     keys = []
     for _ in range(body.count):
         key = generate_key(body.key_type)
         kh = hash_key(key)
         lic = License(
             key_hash=kh,
-            expiry_date=expiry,
+            expiry_date=None,  # 过期时间在激活时计算
             key_type=body.key_type,
             note=body.note,
             plain_key=key,
