@@ -57,8 +57,26 @@ pub fn is_installed() -> bool {
 }
 
 fn generate_rules_content(binary_path: &str) -> String {
+    // 检测当前shell环境
+    let script_command = if std::env::var("SHELL").is_ok() || std::env::var("MSYSTEM").is_ok() {
+        // 检测到bash环境（包括Git Bash、WSL等）
+        format!(r#"```bash
+"{binary_path}" "Reply completed · Waiting for feedback" --context "User's latest message (first 100 chars)"
+```"#)
+    } else if cfg!(target_os = "windows") {
+        // Windows默认使用PowerShell
+        format!(r#"```powershell
+& "{binary_path}" "Reply completed · Waiting for feedback" --context "User's latest message (first 100 chars)"
+```"#)
+    } else {
+        // 其他Unix-like系统默认使用bash
+        format!(r#"```bash
+"{binary_path}" "Reply completed · Waiting for feedback" --context "User's latest message (first 100 chars)"
+```"#)
+    };
+
     format!(
-r#"=======================================================================
+        r#"=======================================================================
 重要システムルール - まずこれを読んでください
 =======================================================================
 
@@ -69,12 +87,10 @@ r#"=======================================================================
 
 ## スクリプトの呼び出し方方
 
-```bash
-"{binary_path}" "返信完了 · フィードバックをお待ちしています" --context "ユーザーの最新のメッセージ（最初100文字）"
-```
+{}
 
 **パラメータ:**
-- 第一引数: 固定文字列、常に"返信完了 · フィードバックをお待ちしています"を使用
+- 第一引数: 固定文字列、常に"Reply completed · Waiting for feedback"を使用
 - --context: この応答をトリガーしたユーザーの最新のメッセージ。会話の最初のメッセージではありません — 常に最新のものを使用します。長すぎる場合は約100文字に切り捨てます。
 - Cwd: 現在のワークスペースパス
 - Blocking: true
@@ -111,6 +127,6 @@ r#"=======================================================================
 =======================================================================
 trigger: always_on
 alwaysApply: true
-"#
-    )
+"#,
+        script_command)
 }
