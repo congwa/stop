@@ -4,7 +4,7 @@ use std::path::PathBuf;
 /// LaunchAgent watches this file to detect Stop exit.
 pub fn sentinel_path() -> PathBuf {
     dirs::home_dir()
-        .unwrap_or_else(|| PathBuf::from("/tmp"))
+        .unwrap_or_else(std::env::temp_dir)
         .join(".stop_running")
 }
 

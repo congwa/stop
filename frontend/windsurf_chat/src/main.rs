@@ -27,13 +27,24 @@ fn main() {
     println!("{}", format_output(&response));
 }
 
+fn ram_disk_port_path() -> std::path::PathBuf {
+    #[cfg(target_os = "windows")]
+    {
+        std::env::temp_dir().join("StopRules").join("port")
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        std::path::PathBuf::from("/Volumes/StopRules/port")
+    }
+}
+
 fn read_port() -> u16 {
-    let ram_disk_port = Path::new("/Volumes/StopRules/port");
+    let ram_disk_port = ram_disk_port_path();
     let cwd_port = Path::new(".wdm/port");
     let script_dir = env::current_exe().ok().and_then(|p| p.parent().map(|d| d.join("port")));
 
     let port_file = if ram_disk_port.exists() {
-        Some(ram_disk_port.to_path_buf())
+        Some(ram_disk_port.clone())
     } else if cwd_port.exists() {
         Some(cwd_port.to_path_buf())
     } else {
@@ -44,7 +55,7 @@ fn read_port() -> u16 {
         Some(p) => p,
         None => {
             eprintln!("[WindsurfChat] 错误: 端口文件不存在，请确保 Stop 应用已启动");
-            eprintln!("[WindsurfChat] 已检查: /Volumes/StopRules/port, .wdm/port");
+            eprintln!("[WindsurfChat] 已检查: {}, .wdm/port", ram_disk_port.display());
             std::process::exit(1);
         }
     };

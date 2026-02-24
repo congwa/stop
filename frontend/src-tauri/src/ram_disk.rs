@@ -5,7 +5,14 @@ pub const RAM_DISK_NAME: &str = "StopRules";
 pub const RAM_DISK_SIZE_MB: u32 = 64;
 
 pub fn ram_disk_path() -> PathBuf {
-    PathBuf::from(format!("/Volumes/{}", RAM_DISK_NAME))
+    #[cfg(target_os = "windows")]
+    {
+        std::env::temp_dir().join(RAM_DISK_NAME)
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        PathBuf::from(format!("/Volumes/{}", RAM_DISK_NAME))
+    }
 }
 
 pub fn is_mounted() -> bool {

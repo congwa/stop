@@ -1,8 +1,10 @@
 use std::path::PathBuf;
 use crate::sentinel;
 
+#[cfg(target_os = "macos")]
 const LAUNCH_AGENT_LABEL: &str = "com.stop.cleanup";
 
+#[cfg(target_os = "macos")]
 pub fn launch_agent_path() -> Option<PathBuf> {
     dirs::home_dir().map(|h| {
         h.join("Library/LaunchAgents")
@@ -10,11 +12,25 @@ pub fn launch_agent_path() -> Option<PathBuf> {
     })
 }
 
+#[cfg(target_os = "macos")]
 pub fn cleanup_script_path() -> Option<PathBuf> {
     dirs::home_dir().map(|h| h.join(".stop_cleanup.sh"))
 }
 
+// Windows: no external cleanup agent, rely on app exit hook
+#[cfg(target_os = "windows")]
+pub fn launch_agent_path() -> Option<PathBuf> {
+    None
+}
+
+#[cfg(target_os = "windows")]
+pub fn cleanup_script_path() -> Option<PathBuf> {
+    None
+}
+
 /// Install the LaunchAgent that watches the sentinel file and cleans up on Stop exit.
+/// On Windows, this is a no-op as cleanup is handled by app exit hook.
+#[cfg(target_os = "macos")]
 pub fn install() -> Result<(), String> {
     let agent_path = launch_agent_path().ok_or("Cannot find home directory")?;
     let script_path = cleanup_script_path().ok_or("Cannot find home directory")?;
@@ -112,18 +128,17 @@ echo "[StopCleanup] Done"
         .map_err(|e| format!("Failed to write LaunchAgent plist: {}", e))?;
 
     // Load the LaunchAgent
-    #[cfg(target_os = "macos")]
-    {
-        let _ = std::process::Command::new("launchctl")
-            .args(["load", &agent_path.to_string_lossy()])
-            .output();
-    }
+    let _ = std::process::Command::new("launchctl")
+        .args(["load", &agent_path.to_string_lossy()])
+        .output();
 
     eprintln!("[Stop] LaunchAgent installed: {}", agent_path.display());
     Ok(())
 }
 
 /// Unload and remove the LaunchAgent.
+/// On Windows, this is a no-op.
+#[cfg(target_os = "macos")]
 pub fn uninstall() -> Result<(), String> {
     let agent_path = match launch_agent_path() {
         Some(p) => p,
@@ -131,12 +146,9 @@ pub fn uninstall() -> Result<(), String> {
     };
 
     if agent_path.exists() {
-        #[cfg(target_os = "macos")]
-        {
-            let _ = std::process::Command::new("launchctl")
-                .args(["unload", &agent_path.to_string_lossy()])
-                .output();
-        }
+        let _ = std::process::Command::new("launchctl")
+            .args(["unload", &agent_path.to_string_lossy()])
+            .output();
         std::fs::remove_file(&agent_path)
             .map_err(|e| format!("Failed to remove LaunchAgent plist: {}", e))?;
     }
@@ -151,6 +163,27 @@ pub fn uninstall() -> Result<(), String> {
 }
 
 /// Check if LaunchAgent is installed.
+#[cfg(target_os = "macos")]
 pub fn is_installed() -> bool {
     launch_agent_path().map(|p| p.exists()).unwrap_or(false)
+}
+
+// ===== Windows stubs =====
+
+#[cfg(target_os = "windows")]
+pub fn install() -> Result<(), String> {
+    // Windows: no LaunchAgent, cleanup handled by app exit hook
+    eprintln!("[Stop] Windows: LaunchAgent not needed, using app exit hook");
+    Ok(())
+}
+
+#[cfg(target_os = "windows")]
+pub fn uninstall() -> Result<(), String> {
+    Ok(())
+}
+
+#[cfg(target_os = "windows")]
+pub fn is_installed() -> bool {
+    // On Windows, always report "installed" since we use exit hook
+    true
 }

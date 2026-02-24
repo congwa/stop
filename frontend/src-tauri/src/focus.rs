@@ -38,7 +38,33 @@ pub fn focus_windsurf() -> Result<(), String> {
         Ok(())
     }
 
-    #[cfg(not(target_os = "macos"))]
+    #[cfg(target_os = "windows")]
+    {
+        // Try to focus Windsurf window using PowerShell
+        let script = r#"
+            $windsurf = Get-Process | Where-Object { $_.ProcessName -like '*Windsurf*' -or $_.MainWindowTitle -like '*Windsurf*' } | Select-Object -First 1
+            if ($windsurf -and $windsurf.MainWindowHandle -ne 0) {
+                Add-Type @"
+                    using System;
+                    using System.Runtime.InteropServices;
+                    public class Win32 {
+                        [DllImport("user32.dll")]
+                        public static extern bool SetForegroundWindow(IntPtr hWnd);
+                        [DllImport("user32.dll")]
+                        public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+                    }
+"@
+                [Win32]::ShowWindow($windsurf.MainWindowHandle, 9)
+                [Win32]::SetForegroundWindow($windsurf.MainWindowHandle)
+            }
+        "#;
+        let _ = Command::new("powershell")
+            .args(["-NoProfile", "-Command", script])
+            .output();
+        Ok(())
+    }
+
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
     {
         Ok(())
     }
