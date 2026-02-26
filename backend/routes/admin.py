@@ -24,6 +24,7 @@ def list_keys(
     today = beijing_today()
     query = select(License)
 
+    # Apply status filter
     if status_filter == "activated":
         query = query.where(col(License.machine_id) != None)
     elif status_filter == "unactivated":
@@ -36,7 +37,14 @@ def list_keys(
             License.expiry_date < today,
         )
 
+    # Apply search filter - fuzzy search on plain_key
+    if search and search.strip():
+        search_term = search.strip().upper()
+        query = query.where(License.plain_key.contains(search_term))
+
     total_query = select(func.count()).select_from(License)
+    
+    # Apply status filter to total query
     if status_filter == "activated":
         total_query = total_query.where(col(License.machine_id) != None)
     elif status_filter == "unactivated":
@@ -48,6 +56,11 @@ def list_keys(
             col(License.expiry_date) != None,
             License.expiry_date < today,
         )
+
+    # Apply search filter to total query
+    if search and search.strip():
+        search_term = search.strip().upper()
+        total_query = total_query.where(License.plain_key.contains(search_term))
 
     total = session.exec(total_query).one()
     items = session.exec(query.offset((page - 1) * page_size).limit(page_size)).all()

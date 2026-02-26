@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api } from '../lib/api'
 import type { KeyItem } from '../lib/api'
-import { Trash2, Ban, ChevronLeft, ChevronRight, Copy, Check } from 'lucide-react'
+import { Trash2, Ban, ChevronLeft, ChevronRight, Copy, Check, Search } from 'lucide-react'
 
 const STATUS_LABELS: Record<string, { label: string; className: string }> = {
   activated: { label: '已激活', className: 'bg-emerald-100 text-emerald-700' },
@@ -23,13 +23,14 @@ export default function KeyList() {
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
   const [statusFilter, setStatusFilter] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
   const [loading, setLoading] = useState(true)
   const [copiedId, setCopiedId] = useState<number | null>(null)
   const pageSize = 20
 
-  function load(p = page, s = statusFilter) {
+  function load(p = page, s = statusFilter, search = searchQuery) {
     setLoading(true)
-    api.listKeys({ page: p, page_size: pageSize, status: s || undefined })
+    api.listKeys({ page: p, page_size: pageSize, status: s || undefined, search: search || undefined })
       .then(r => { setItems(r.items); setTotal(r.total) })
       .finally(() => setLoading(false))
   }
@@ -45,6 +46,17 @@ export default function KeyList() {
   function changePage(p: number) {
     setPage(p)
     load(p)
+  }
+
+  function handleSearch(search: string) {
+    setSearchQuery(search)
+    setPage(1)
+    load(1, statusFilter, search)
+  }
+
+  function handleSearchSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    handleSearch(searchQuery)
   }
 
   async function revoke(id: number) {
@@ -74,20 +86,34 @@ export default function KeyList() {
         <p className="text-sm text-slate-400">共 {total} 条</p>
       </div>
 
-      <div className="flex gap-2 mb-4 flex-wrap">
-        {STATUS_OPTIONS.map(o => (
-          <button
-            key={o.value}
-            onClick={() => changeStatus(o.value)}
-            className={`px-3 py-1 rounded-full text-sm border transition-colors ${
-              statusFilter === o.value
-                ? 'bg-indigo-600 text-white border-indigo-600'
-                : 'border-slate-200 text-slate-600 hover:border-indigo-400'
-            }`}
-          >
-            {o.label}
-          </button>
-        ))}
+      <div className="flex flex-col sm:flex-row gap-3 mb-4">
+        <form onSubmit={handleSearchSubmit} className="flex-1 max-w-md">
+          <div className="relative">
+            <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => handleSearch(e.target.value)}
+              placeholder="搜索原始密钥 (如: AEA4)"
+              className="w-full pl-10 pr-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            />
+          </div>
+        </form>
+        <div className="flex gap-2 flex-wrap">
+          {STATUS_OPTIONS.map(o => (
+            <button
+              key={o.value}
+              onClick={() => changeStatus(o.value)}
+              className={`px-3 py-1 rounded-full text-sm border transition-colors ${
+                statusFilter === o.value
+                  ? 'bg-indigo-600 text-white border-indigo-600'
+                  : 'border-slate-200 text-slate-600 hover:border-indigo-400'
+              }`}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Mobile card list */}

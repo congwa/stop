@@ -74,7 +74,7 @@ export const api = {
     const r = await client.get('/stats')
     return r.data
   },
-  async listKeys(params: { page?: number; page_size?: number; status?: string }): Promise<KeyListResponse> {
+  async listKeys(params: { page?: number; page_size?: number; status?: string; search?: string }): Promise<KeyListResponse> {
     const r = await client.get('/keys', { params })
     return r.data
   },
