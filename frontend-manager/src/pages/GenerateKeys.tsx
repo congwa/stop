@@ -57,6 +57,16 @@ export default function GenerateKeys() {
     a.click()
   }
 
+  function downloadTxt() {
+    const txt = keys.join('\n')
+    const blob = new Blob([txt], { type: 'text/plain' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `stop-keys-${Date.now()}.txt`
+    a.click()
+  }
+
   return (
     <div className="p-4 md:p-8 md:max-w-2xl">
       <h2 className="text-lg md:text-xl font-bold text-slate-800 mb-4 md:mb-6">批量生成 Key</h2>
@@ -123,6 +133,13 @@ export default function GenerateKeys() {
               >
                 {copied ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
                 {copied ? '已复制' : '复制全部'}
+              </button>
+              <button
+                onClick={downloadTxt}
+                className="flex items-center gap-1.5 text-sm text-slate-600 hover:text-indigo-600 border border-slate-200 rounded-lg px-3 py-1.5 transition-colors"
+              >
+                <Download size={14} />
+                导出 TXT
               </button>
               <button
                 onClick={downloadCsv}

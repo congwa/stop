@@ -31,7 +31,7 @@ client.interceptors.response.use(
   (r) => r,
   (err) => {
     if (err.response?.status === 401) {
-      localStorage.removeItem('admin_token')
+      localStorage.removeItem('admin_jwt')
       token = ''
       window.location.reload()
     }

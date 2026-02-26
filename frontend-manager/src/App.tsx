@@ -19,7 +19,7 @@ function App() {
   const [page, setPage] = useState<Page>('dashboard')
 
   function logout() {
-    localStorage.removeItem('admin_token')
+    localStorage.removeItem('admin_jwt')
     setAuthed(false)
   }
 
