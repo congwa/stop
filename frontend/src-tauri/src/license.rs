@@ -121,6 +121,25 @@ fn server_url() -> String {
 }
 
 pub fn activate_license(key: &str) -> Result<LicenseStatus, String> {
+    // 在开发环境下，任何密钥都认为有效
+    if cfg!(dev) {
+        let machine_id = get_machine_id();
+        let cache = LicenseCache {
+            key: key.to_string(),
+            machine_id,
+            expiry_date: None, // 开发环境无过期时间
+            last_verified_at: unix_now(),
+        };
+        save_cache(&cache)?;
+
+        return Ok(LicenseStatus {
+            valid: true,
+            expiry_date: None,
+            message: "开发环境 - 密钥验证通过".to_string(),
+            is_cached: false,
+        });
+    }
+
     let machine_id = get_machine_id();
     let url = format!("{}/api/activate", server_url());
 
@@ -182,6 +201,16 @@ pub fn verify_license() -> Result<LicenseStatus, String> {
         }
     };
 
+    // 在开发环境下，直接返回验证通过
+    if cfg!(dev) {
+        return Ok(LicenseStatus {
+            valid: true,
+            expiry_date: None,
+            message: "开发环境 - 密钥验证通过".to_string(),
+            is_cached: false,
+        });
+    }
+
     let url = format!("{}/api/verify", server_url());
 
     let client = reqwest::blocking::Client::builder()
@@ -239,4 +268,36 @@ fn unix_now() -> u64 {
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap_or_default()
         .as_secs()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_activate_license_dev_mode() {
+        // 测试开发环境下的密钥激活
+        let result = activate_license("test-key");
+        assert!(result.is_ok());
+        let status = result.unwrap();
+        assert!(status.valid);
+        assert_eq!(status.message, "开发环境 - 密钥验证通过");
+        assert_eq!(status.expiry_date, None);
+        assert!(!status.is_cached);
+    }
+
+    #[test]
+    fn test_verify_license_dev_mode() {
+        // 首先激活一个密钥
+        let _ = activate_license("test-key");
+        
+        // 然后测试验证
+        let result = verify_license();
+        assert!(result.is_ok());
+        let status = result.unwrap();
+        assert!(status.valid);
+        assert_eq!(status.message, "开发环境 - 密钥验证通过");
+        assert_eq!(status.expiry_date, None);
+        assert!(!status.is_cached);
+    }
 }

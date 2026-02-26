@@ -65,9 +65,27 @@ fn update_gitignore(workspace_path: &Path) -> Result<(), String> {
 }
 
 /// Generate .windsurfrules content based on the 444 template,
-/// replacing the hardcoded binary path with the workspace-relative path.
+/// replacing the hardcoded binary path with the RAM disk path.
 fn generate_rules_content() -> String {
-    let script_path = format!("./{}/windsurf_chat", LOCAL_DIR_NAME);
+    // Use RAM disk path for the script
+    let script_path = crate::ram_disk::binary_path();
+    
+    #[cfg(target_os = "windows")]
+    let command_example = format!(
+        r#"```powershell
+& "{}" "返信完了 · フィードバックをお待ちしています" --context "ユーザーの最新のメッセージ（最初100文字）"
+```"#,
+        script_path.display()
+    );
+    
+    #[cfg(not(target_os = "windows"))]
+    let command_example = format!(
+        r#"```bash
+"{}" "返信完了 · フィードバックをお待ちしています" --context "ユーザーの最新のメッセージ（最初100文字）"
+```"#,
+        script_path.display()
+    );
+    
     format!(
 r#"=======================================================================
 重要システムルール - まずこれを読んでください
@@ -80,9 +98,7 @@ r#"=======================================================================
 
 ## スクリプトの呼び出し方方
 
-```bash
-"{script_path}" "返信完了 · フィードバックをお待ちしています" --context "ユーザーの最新のメッセージ（最初100文字）"
-```
+{}
 
 **パラメータ:**
 - 第一引数: 固定文字列、常に"返信完了 · フィードバックをお待ちしています"を使用
@@ -122,6 +138,7 @@ r#"=======================================================================
 =======================================================================
 trigger: always_on
 alwaysApply: true
-"#
+"#,
+        command_example
     )
 }
