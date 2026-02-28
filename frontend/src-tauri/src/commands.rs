@@ -1,6 +1,15 @@
 use crate::{cascade_api, chat_server, focus, global_rules, launchagent, license, ram_disk, sentinel};
 use crate::chat_server::SharedState;
 
+/// 安全截取字符串前 N 个字符，返回 &str，零堆分配，永不 panic。
+/// 中文/emoji 等多字节字符均按字符计数而非字节。
+fn str_preview(s: &str, max_chars: usize) -> &str {
+    match s.char_indices().nth(max_chars) {
+        Some((byte_idx, _)) => &s[..byte_idx],
+        None => s,
+    }
+}
+
 // ===== Auto Mode =====
 
 #[derive(Debug, Clone, serde::Serialize)]
@@ -54,7 +63,7 @@ pub fn send_chat_response(
     eprintln!("  - request_id: {}", request_id);
     eprintln!("  - action: {}", action);
     eprintln!("  - text length: {}", text.len());
-    eprintln!("  - text 前50字符: {}", &text[..50.min(text.len())]);
+    eprintln!("  - text 前50字符: {}", str_preview(&text, 50));
     
     if let Some(ref imgs) = images {
         eprintln!("  - images count: {}", imgs.len());
@@ -123,7 +132,7 @@ pub async fn save_feedback_image(
     eprintln!("[Backend] save_feedback_image 开始");
     eprintln!("[Backend] 文件名: {}", filename);
     eprintln!("[Backend] image_data 长度: {}", image_data.len());
-    eprintln!("[Backend] image_data 前50字符: {}", &image_data[..50.min(image_data.len())]);
+    eprintln!("[Backend] image_data 前50字符: {}", str_preview(&image_data, 50));
     
     let workspaces = chat_server::get_workspace_paths(state.inner().clone());
     eprintln!("[Backend] 获取到 {} 个工作空间", workspaces.len());
@@ -163,7 +172,7 @@ pub async fn save_feedback_image(
         };
         
         eprintln!("[Backend] 处理后的 base64 数据长度: {}", base64_data.len());
-        eprintln!("[Backend] 处理后的 base64 前50字符: {}", &base64_data[..50.min(base64_data.len())]);
+        eprintln!("[Backend] 处理后的 base64 前50字符: {}", str_preview(base64_data, 50));
 
         use base64::Engine;
         let bytes = match base64::engine::general_purpose::STANDARD.decode(base64_data) {
