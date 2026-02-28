@@ -5,6 +5,11 @@ description = "Stop - AI 对话反馈工具"
 authors = ["you"]
 edition = "2021"
 default-run = "stop"
+autobins = false
+
+[[bin]]
+name = "stop"
+path = "src/main.rs"
 
 [lib]
 name = "stop_lib"
@@ -29,4 +34,13 @@ panic = "abort"
 codegen-units = 1
 lto = true
 opt-level = "s"
+strip = true
+
+# 快速打包 profile：多核并行，无 LTO，编译速度比 release 快 3-5x
+# 使用方式：tauri build --profile release-fast
+[profile.release-fast]
+inherits = "release"
+codegen-units = 18   # 与 CPU 核数对齐
+lto = "thin"         # thin LTO 可并行，比 fat LTO 快很多
+opt-level = 2        # 比 "s" 更激进的速度优化
 strip = true

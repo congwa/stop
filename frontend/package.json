@@ -15,7 +15,9 @@
     "build:all-sh": "bash scripts/build-all.sh",
     "tauri:build": "npm run build:cli && tauri build --target universal-apple-darwin",
     "tauri:build:intel": "npm run build:cli && tauri build --target x86_64-apple-darwin",
-    "tauri:build:arm": "npm run build:cli && tauri build --target aarch64-apple-darwin"
+    "tauri:build:arm": "npm run build:cli && tauri build --target aarch64-apple-darwin",
+    "tauri:build:fast": "npm run build:cli && tauri build --target universal-apple-darwin --profile release-fast",
+    "tauri:build:fast:arm": "npm run build:cli && tauri build --target aarch64-apple-darwin --profile release-fast"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.5.0",

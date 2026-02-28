@@ -48,8 +48,8 @@ pub struct ServerStatus {
 enum RequestState {
     Connected { response_tx: std::sync::mpsc::Sender<ChatResponse> },
     Disconnected { disconnected_at: std::time::Instant },
-    ResponseQueued { response: ChatResponse, queued_at: std::time::Instant },
-    Completed { response_action: String, completed_at: std::time::Instant },
+    ResponseQueued { response: ChatResponse, #[allow(dead_code)] queued_at: std::time::Instant },
+    Completed { #[allow(dead_code)] response_action: String, completed_at: std::time::Instant },
 }
 
 impl RequestState {
