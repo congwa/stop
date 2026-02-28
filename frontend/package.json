@@ -11,7 +11,9 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
-    "tauri:build": "npm run build:cli && tauri build"
+    "tauri:build": "npm run build:cli && tauri build --target universal-apple-darwin",
+    "tauri:build:intel": "npm run build:cli && tauri build --target x86_64-apple-darwin",
+    "tauri:build:arm": "npm run build:cli && tauri build --target aarch64-apple-darwin"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.5.0",

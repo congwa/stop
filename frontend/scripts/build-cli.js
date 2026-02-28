@@ -8,9 +8,12 @@ import { fileURLToPath } from 'url';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const projectRoot = join(__dirname, '..');
 
-// Set up cargo path
-const cargoPath = process.env.USERPROFILE + '\\.cargo\\bin';
-const env = { ...process.env, PATH: `${process.env.PATH};${cargoPath}` };
+// Set up cargo path for cross-platform support
+const isWindows = process.platform === 'win32';
+const cargoPath = isWindows ? 
+  (process.env.USERPROFILE || '') + '\\.cargo\\bin' : 
+  (process.env.HOME || '') + '/.cargo/bin';
+const env = { ...process.env, PATH: `${process.env.PATH}${isWindows ? ';' : ':'}${cargoPath}` };
 
 // Build the CLI
 console.log('Building windsurf_chat...');
@@ -30,7 +33,6 @@ const binDir = join(projectRoot, 'src-tauri', 'binaries');
 mkdirSync(binDir, { recursive: true });
 
 // Copy binary for different platforms
-const isWindows = process.platform === 'win32';
 const srcBinary = join(projectRoot, 'windsurf_chat', 'target', 'release', isWindows ? 'windsurf_chat.exe' : 'windsurf_chat');
 
 // Copy platform-specific binary
