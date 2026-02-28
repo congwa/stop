@@ -123,22 +123,82 @@ pub fn stop_server(state: SharedState) {
 }
 
 pub fn send_response(state: SharedState, request_id: &str, response: ChatResponse) -> Result<(), String> {
+    eprintln!("[ChatServer] send_response 开始:");
+    eprintln!("  - request_id: {}", request_id);
+    eprintln!("  - action: {}", response.action);
+    eprintln!("  - text length: {}", response.text.len());
+    eprintln!("  - text 前50字符: {}", &response.text[..50.min(response.text.len())]);
+    eprintln!("  - images count: {}", response.images.len());
+    
+    // 详细记录每个图片路径
+    if !response.images.is_empty() {
+        eprintln!("[ChatServer] 图片路径详情:");
+        for (i, img_path) in response.images.iter().enumerate() {
+            eprintln!("    - image[{}]: {}", i, img_path);
+            // 检查文件是否存在和可读
+            match std::fs::metadata(img_path) {
+                Ok(metadata) => {
+                    eprintln!("      - 文件存在，大小: {} 字节", metadata.len());
+                    eprintln!("      - 文件类型: {:?}", metadata.file_type());
+                    eprintln!("      - 文件修改时间: {:?}", metadata.modified());
+                    eprintln!("      - 文件权限: {:?}", metadata.permissions());
+                }
+                Err(e) => {
+                    eprintln!("      - 文件检查失败: {}", e);
+                }
+            }
+        }
+    }
+    
     let mut s = state.lock().unwrap();
+    eprintln!("[ChatServer] 获取锁成功，pending_requests 数量: {}", s.pending_requests.len());
+    
     if let Some(req) = s.pending_requests.get_mut(request_id) {
+        eprintln!("[ChatServer] 找到请求: {}", request_id);
+        eprintln!("[ChatServer] 当前状态: {}", req.state.as_str());
+        
         let action = response.action.clone();
         let old = std::mem::replace(&mut req.state, RequestState::Completed { response_action: action.clone(), completed_at: std::time::Instant::now() });
+        
+        eprintln!("[ChatServer] 状态替换完成，处理旧状态");
+        
         match old {
-            RequestState::Connected { response_tx } => response_tx.send(response).map_err(|_| "channel closed".to_string()),
+            RequestState::Connected { response_tx } => {
+                eprintln!("[ChatServer] 发送响应到 channel");
+                match response_tx.send(response.clone()) {
+                    Ok(()) => {
+                        eprintln!("[ChatServer] 响应发送成功");
+                        eprintln!("[ChatServer] 发送的响应包含:");
+                        eprintln!("  - action: {}", action);
+                        eprintln!("  - text length: {}", response.text.len());
+                        eprintln!("  - images count: {}", response.images.len());
+                        Ok(())
+                    }
+                    Err(_) => {
+                        eprintln!("[ChatServer] 响应发送失败: channel closed");
+                        Err("channel closed".to_string())
+                    }
+                }
+            }
             RequestState::Disconnected { .. } | RequestState::ResponseQueued { .. } => {
-                req.state = RequestState::ResponseQueued { response, queued_at: std::time::Instant::now() };
+                eprintln!("[ChatServer] 请求已断开或队列中，保存响应");
+                req.state = RequestState::ResponseQueued { response: response.clone(), queued_at: std::time::Instant::now() };
+                eprintln!("[ChatServer] 响应已保存到队列");
+                eprintln!("[ChatServer] 队列中的响应包含:");
+                eprintln!("  - action: {}", action);
+                eprintln!("  - text length: {}", response.text.len());
+                eprintln!("  - images count: {}", response.images.len());
                 Ok(())
             }
             RequestState::Completed { .. } => {
+                eprintln!("[ChatServer] 请求已完成: {}", request_id);
                 req.state = RequestState::Completed { response_action: action, completed_at: std::time::Instant::now() };
                 Err(format!("already completed: {}", request_id))
             }
         }
     } else {
+        eprintln!("[ChatServer] 未找到请求: {}", request_id);
+        eprintln!("[ChatServer] 当前所有请求ID: {:?}", s.pending_requests.keys().collect::<Vec<_>>());
         Err(format!("no request: {}", request_id))
     }
 }
@@ -277,20 +337,42 @@ fn handle_connection(mut stream: std::net::TcpStream, state: SharedState, app_ha
 }
 
 fn handle_request(reader: &mut BufReader<std::net::TcpStream>, stream: &mut std::net::TcpStream, content_length: usize, state: SharedState, app_handle: AppHandle) {
+    eprintln!("[ChatServer] handle_request 开始: content_length={}", content_length);
+    
     if content_length == 0 || content_length > 10 * 1024 * 1024 {
+        eprintln!("[ChatServer] 无效的 content_length: {}", content_length);
         send_http_response(stream, 400, r#"{"error":"bad length"}"#); return;
     }
+    
     let mut body = vec![0u8; content_length];
     if reader.read_exact(&mut body).is_err() {
+        eprintln!("[ChatServer] 读取请求体失败");
         send_http_response(stream, 400, r#"{"error":"read failed"}"#); return;
     }
-    let data: ChatRequest = match serde_json::from_slice(&body) {
-        Ok(d) => d,
-        Err(e) => { send_http_response(stream, 400, &format!("{{\"error\":\"{}\"}}", e)); return; }
+    
+    let data: ChatRequest = match serde_json::from_slice::<ChatRequest>(&body) {
+        Ok(d) => {
+            eprintln!("[ChatServer] 解析请求成功:");
+            eprintln!("  - request_id: {}", d.request_id);
+            eprintln!("  - prompt length: {}", d.prompt.len());
+            eprintln!("  - workspace_path: {:?}", d.workspace_path);
+            eprintln!("  - images: {:?}", d.images);
+            d
+        }
+        Err(e) => {
+            eprintln!("[ChatServer] 解析请求失败: {}", e);
+            send_http_response(stream, 400, &format!("{{\"error\":\"{}\"}}", e)); return;
+        }
     };
+    
     let request_id = if data.request_id.is_empty() {
-        std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_millis().to_string()
-    } else { data.request_id.clone() };
+        let id = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_millis().to_string();
+        eprintln!("[ChatServer] 生成新的 request_id: {}", id);
+        id
+    } else { 
+        eprintln!("[ChatServer] 使用现有的 request_id: {}", data.request_id);
+        data.request_id.clone() 
+    };
 
     let mut workspace_path = data.workspace_path.clone().unwrap_or_default();
     if workspace_path.is_empty() {
@@ -300,8 +382,22 @@ fn handle_request(reader: &mut BufReader<std::net::TcpStream>, stream: &mut std:
         }
     }
 
+    // 将 workspace_path 添加到 workspace_paths 列表中（如果还没有的话）
+    if !workspace_path.is_empty() {
+        let ws_path = PathBuf::from(&workspace_path);
+        if ws_path.is_dir() {
+            let mut s = state.lock().unwrap();
+            if !s.workspace_paths.contains(&ws_path) {
+                eprintln!("[ChatServer] 添加新的工作空间到列表: {}", workspace_path);
+                s.workspace_paths.push(ws_path.clone());
+                drop(s);
+                persist_workspace_paths(&get_workspace_paths(state.clone()));
+            }
+        }
+    }
+
     let project_name = if !workspace_path.is_empty() {
-        workspace_path.trim_end_matches('/').split('/').filter(|s| !s.is_empty()).last().map(|s| s.to_string())
+        workspace_path.trim_end_matches('/').split('/').filter(|s: &&str| !s.is_empty()).last().map(|s: &str| s.to_string())
     } else { None };
 
     // Check for queued response
@@ -331,18 +427,25 @@ fn handle_request(reader: &mut BufReader<std::net::TcpStream>, stream: &mut std:
 
     {
         let mut s = state.lock().unwrap();
+        eprintln!("[ChatServer] 检查是否有重复请求，当前 pending_requests 数量: {}", s.pending_requests.len());
+        
         if let Some(old) = s.pending_requests.get_mut(&request_id) {
+            eprintln!("[ChatServer] 发现重复请求: {}", request_id);
             if let RequestState::Connected { response_tx } = std::mem::replace(&mut old.state, RequestState::Completed { response_action: "superseded".to_string(), completed_at: std::time::Instant::now() }) {
                 let _ = response_tx.send(ChatResponse { action: "timeout_continue".to_string(), text: String::new(), images: Vec::new(), error: None });
             }
             s.pending_requests.remove(&request_id);
+            eprintln!("[ChatServer] 已移除重复请求");
         }
+        
+        eprintln!("[ChatServer] 存储新请求到 pending_requests");
         s.pending_requests.insert(request_id.clone(), StoredRequest {
             data: ChatRequest { prompt: data.prompt.clone(), request_id: request_id.clone(), context: data.context.clone(), workspace_path: if workspace_path.is_empty() { None } else { Some(workspace_path.clone()) }, images: data.images.clone() },
             state: RequestState::Connected { response_tx: tx },
             timestamp: now_ts,
             project_name: project_name.clone(),
         });
+        eprintln!("[ChatServer] 请求存储完成，当前 pending_requests 数量: {}", s.pending_requests.len());
     }
 
     let prompt_event = PendingPrompt {
@@ -361,13 +464,26 @@ fn handle_request(reader: &mut BufReader<std::net::TcpStream>, stream: &mut std:
     let max_wait = std::time::Duration::from_secs(4 * 60 * 60);
     let start = std::time::Instant::now();
 
+    eprintln!("[ChatServer] 开始等待响应，request_id: {}", request_id);
+    eprintln!("[ChatServer] 最大等待时间: {:?}", max_wait);
+
     let response = loop {
         match rx.recv_timeout(check_interval) {
-            Ok(resp) => break Some(resp),
+            Ok(resp) => {
+                eprintln!("[ChatServer] 收到响应:");
+                eprintln!("  - action: {}", resp.action);
+                eprintln!("  - text length: {}", resp.text.len());
+                eprintln!("  - images count: {}", resp.images.len());
+                break Some(resp);
+            }
             Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {
-                if start.elapsed() > max_wait { break None; }
+                if start.elapsed() > max_wait { 
+                    eprintln!("[ChatServer] 等待超时");
+                    break None; 
+                }
                 if let Some(ref ps) = peek_stream {
                     if !is_tcp_alive(ps) {
+                        eprintln!("[ChatServer] TCP 连接已断开");
                         let mut s = state.lock().unwrap();
                         if let Some(req) = s.pending_requests.get_mut(&request_id) {
                             req.state = RequestState::Disconnected { disconnected_at: std::time::Instant::now() };
@@ -377,18 +493,27 @@ fn handle_request(reader: &mut BufReader<std::net::TcpStream>, stream: &mut std:
                     }
                 }
             }
-            Err(_) => break None,
+            Err(_) => {
+                eprintln!("[ChatServer] channel 接收错误");
+                break None;
+            }
         }
     };
 
     match response {
         Some(resp) => {
+            eprintln!("[ChatServer] 发送 HTTP 响应:");
+            eprintln!("  - action: {}", resp.action);
+            eprintln!("  - text length: {}", resp.text.len());
+            
             let body = serde_json::to_string(&resp).unwrap_or_default();
             let http = format!("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}", body.len(), body);
             let _ = stream.write_all(http.as_bytes());
             let _ = stream.flush();
+            eprintln!("[ChatServer] HTTP 响应发送成功");
         }
         None => {
+            eprintln!("[ChatServer] 发送超时响应");
             let timeout_resp = serde_json::json!({ "action": "timeout_continue", "text": "", "images": [] }).to_string();
             send_http_response(stream, 200, &timeout_resp);
             let mut s = state.lock().unwrap();

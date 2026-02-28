@@ -314,32 +314,90 @@ function PromptCard({ prompt, isResponded }: { prompt: ReturnType<typeof useChat
   }, [prompt.request_id])
 
   const processImageFile = useCallback(async (file: File) => {
+    console.log('[Frontend] processImageFile 开始')
+    console.log('[Frontend] 文件信息:', {
+      name: file.name,
+      size: file.size,
+      type: file.type,
+      lastModified: file.lastModified
+    })
+    
     const preview = URL.createObjectURL(file)
+    console.log('[Frontend] 创建预览 URL:', preview)
+    
     const ext = file.type.includes('png') ? 'png' : file.type.includes('gif') ? 'gif' : 'jpg'
     const filename = `feedback_${Date.now()}_${Math.floor(Math.random() * 1000)}.${ext}`
+    console.log('[Frontend] 生成文件名:', filename)
+    
     const item: ImageItem = { preview, filePath: null, status: 'uploading' }
-    setImages((prev) => [...prev, item])
+    setImages((prev) => {
+      console.log('[Frontend] 添加图片到列表，当前数量:', prev.length + 1)
+      return [...prev, item]
+    })
+    
     const idx = images.length
+    console.log('[Frontend] 图片索引:', idx)
+    
     try {
+      console.log('[Frontend] 开始转换为 base64')
       const base64 = await fileToBase64(file)
+      console.log('[Frontend] base64 转换完成，数据长度:', base64.length)
+      console.log('[Frontend] base64 前50字符:', base64.substring(0, 50))
+      
+      console.log('[Frontend] 开始调用 saveFeedbackImage')
       const filePath = await saveFeedbackImage(base64, filename)
-      setImages((prev) => prev.map((img, i) => i === idx ? { ...img, filePath, status: 'done' } : img))
-    } catch {
-      setImages((prev) => prev.map((img, i) => i === idx ? { ...img, status: 'error' } : img))
+      console.log('[Frontend] saveFeedbackImage 成功，文件路径:', filePath)
+      
+      setImages((prev) => {
+        console.log('[Frontend] 更新图片状态为 done')
+        return prev.map((img, i) => i === idx ? { ...img, filePath, status: 'done' } : img)
+      })
+    } catch (error) {
+      console.error('[Frontend] 图片处理失败:', error)
+      setImages((prev) => {
+        console.log('[Frontend] 更新图片状态为 error')
+        return prev.map((img, i) => i === idx ? { ...img, status: 'error' } : img)
+      })
     }
   }, [images.length, saveFeedbackImage])
 
   const handlePaste = useCallback((e: React.ClipboardEvent) => {
+    console.log('[Frontend] handlePaste 开始')
+    console.log('[Frontend] clipboardData items count:', e.clipboardData?.items?.length)
+    
     const items = e.clipboardData?.items
-    if (!items) return
+    if (!items) {
+      console.log('[Frontend] 没有找到 clipboardData items')
+      return
+    }
+    
     for (const item of Array.from(items)) {
+      console.log('[Frontend] 检查 item:', {
+        kind: item.kind,
+        type: item.type,
+        isImage: item.type.startsWith('image/')
+      })
+      
       if (item.type.startsWith('image/')) {
+        console.log('[Frontend] 发现图片，阻止默认粘贴行为')
         e.preventDefault()
         const file = item.getAsFile()
-        if (file) processImageFile(file)
+        if (file) {
+          console.log('[Frontend] 获取到图片文件:', {
+            name: file.name,
+            size: file.size,
+            type: file.type,
+            lastModified: file.lastModified
+          })
+          processImageFile(file)
+        } else {
+          console.log('[Frontend] 无法从 clipboard item 获取文件')
+        }
         return
       }
     }
+    
+    console.log('[Frontend] 没有发现图片，允许默认粘贴行为')
   }, [processImageFile])
 
   const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -363,17 +421,46 @@ function PromptCard({ prompt, isResponded }: { prompt: ReturnType<typeof useChat
   const isUploading = images.some((img) => img.status === 'uploading')
 
   const handleSubmit = useCallback(async () => {
-    if (submitting || isUploading) return
+    console.log('[Frontend] handleSubmit 开始')
+    console.log('[Frontend] 提交状态检查:', {
+      submitting,
+      isUploading,
+      textLength: text.trim().length,
+      imagesCount: images.length,
+      doneImagesCount: images.filter(img => img.status === 'done').length
+    })
+    
+    if (submitting || isUploading) {
+      console.log('[Frontend] 当前正在提交或上传，跳过')
+      return
+    }
+    
     setSubmitting(true)
+    console.log('[Frontend] 设置提交状态为 true')
+    
     try {
       const trimmed = text.trim()
       const imagePaths = images.filter((img) => img.status === 'done' && img.filePath).map((img) => img.filePath!)
+      
+      console.log('[Frontend] 准备提交数据:')
+      console.log('  - 文本长度:', trimmed.length)
+      console.log('  - 文本内容前50字符:', trimmed.substring(0, 50))
+      console.log('  - 图片路径数量:', imagePaths.length)
+      console.log('  - 图片路径:', imagePaths)
+      
       if (trimmed || imagePaths.length > 0) {
+        console.log('[Frontend] 调用 submitResponse')
         await submitResponse(prompt.request_id, trimmed, imagePaths.length > 0 ? imagePaths : undefined)
+        console.log('[Frontend] submitResponse 成功')
       } else {
+        console.log('[Frontend] 没有内容，调用 continueChat')
         await continueChat(prompt.request_id)
+        console.log('[Frontend] continueChat 成功')
       }
+    } catch (error) {
+      console.error('[Frontend] handleSubmit 失败:', error)
     } finally {
+      console.log('[Frontend] 设置提交状态为 false')
       setSubmitting(false)
     }
   }, [text, images, prompt.request_id, submitResponse, continueChat, submitting, isUploading])

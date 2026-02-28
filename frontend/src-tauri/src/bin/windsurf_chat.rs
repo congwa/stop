@@ -106,6 +106,19 @@ fn format_output(response: &serde_json::Value) -> String {
     let text = response.get("text").and_then(|v| v.as_str()).unwrap_or("");
     let error = response.get("error").and_then(|v| v.as_str()).unwrap_or("");
     let images = response.get("images").and_then(|v| v.as_array()).cloned().unwrap_or_default();
+    
+    // 添加调试输出
+    if !images.is_empty() {
+        eprintln!("[WindsurfChat] Debug: 接收到 {} 张图片:", images.len());
+        for (i, img) in images.iter().enumerate() {
+            if let Some(path) = img.as_str() {
+                eprintln!("[WindsurfChat] Debug: 图片 {}: {}", i + 1, path);
+            }
+        }
+    } else {
+        eprintln!("[WindsurfChat] Debug: 没有接收到图片");
+    }
+    
     match action {
         "timeout_continue" => "请继续等待用户回复\n\n重要提醒：遵循工作区规则，每次回复结束前必须调用脚本！".to_string(),
         "error" => format!("[WindsurfChat 错误] {}\n\n请检查 Stop 应用状态。\n\n重要：请立即结束当前对话。", if error.is_empty() { "未知错误" } else { error }),

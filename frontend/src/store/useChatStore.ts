@@ -230,22 +230,43 @@ export const useChatStore = create<ChatStoreState>((set, get) => ({
   },
 
   submitResponse: async (requestId: string, text: string, images?: string[]) => {
-    if (!isTauri()) return
+    console.log('[ChatStore] submitResponse 开始')
+    console.log('[ChatStore] 参数:')
+    console.log('  - requestId:', requestId)
+    console.log('  - text length:', text.length)
+    console.log('  - text 前50字符:', text.substring(0, 50))
+    console.log('  - images:', images)
+    console.log('  - images count:', images?.length || 0)
+    
+    if (!isTauri()) {
+      console.log('[ChatStore] 非 Tauri 环境，直接返回')
+      return
+    }
+    
     try {
+      console.log('[ChatStore] 调用 tauriInvoke send_chat_response')
       await tauriInvoke('send_chat_response', {
         requestId,
         action: 'instruction',
         text,
         images: images && images.length > 0 ? images : null,
       })
+      console.log('[ChatStore] send_chat_response 调用成功')
+      
       set((s) => {
+        console.log('[ChatStore] 更新 respondedIds')
         const next = new Map(s.respondedIds)
         next.set(requestId, Date.now())
         return { respondedIds: next }
       })
-      tauriInvoke('focus_windsurf').catch(() => {})
-    } catch (e) {
-      set({ error: String(e) })
+      
+      console.log('[ChatStore] 调用 focus_windsurf')
+      tauriInvoke('focus_windsurf').catch((error) => {
+        console.warn('[ChatStore] focus_windsurf 失败:', error)
+      })
+    } catch (error) {
+      console.error('[ChatStore] submitResponse 失败:', error)
+      set({ error: String(error) })
     }
   },
 
@@ -276,8 +297,25 @@ export const useChatStore = create<ChatStoreState>((set, get) => ({
   },
 
   saveFeedbackImage: async (base64Data: string, filename: string) => {
-    if (!isTauri()) return ''
-    return tauriInvoke<string>('save_feedback_image', { imageData: base64Data, filename })
+    console.log('[ChatStore] saveFeedbackImage 开始')
+    console.log('[ChatStore] 文件名:', filename)
+    console.log('[ChatStore] base64 数据长度:', base64Data.length)
+    console.log('[ChatStore] base64 前50字符:', base64Data.substring(0, 50))
+    
+    if (!isTauri()) {
+      console.log('[ChatStore] 非 Tauri 环境，返回空字符串')
+      return ''
+    }
+    
+    try {
+      console.log('[ChatStore] 调用 tauriInvoke save_feedback_image')
+      const result = await tauriInvoke<string>('save_feedback_image', { imageData: base64Data, filename })
+      console.log('[ChatStore] save_feedback_image 成功，返回路径:', result)
+      return result
+    } catch (error) {
+      console.error('[ChatStore] save_feedback_image 失败:', error)
+      throw error
+    }
   },
 
   addPending: (prompt: PendingPrompt) => {
