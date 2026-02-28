@@ -102,10 +102,46 @@ fn make_request(port: u16, prompt: &str, context: &str, retry: u8) -> serde_json
         return serde_json::json!({"action":"error","error":format!("读取失败: {}",e),"text":"","images":[]});
     }
     let s = String::from_utf8_lossy(&buf);
-    let start = s.find("\r\n\r\n").map(|i| i + 4).unwrap_or(0);
-    serde_json::from_str(&s[start..]).unwrap_or_else(|_| {
+    let header_end = s.find("\r\n\r\n").map(|i| i + 4).unwrap_or(0);
+    let body = &s[header_end..];
+    // Detect chunked transfer encoding
+    let is_chunked = s[..header_end].to_ascii_lowercase().contains("transfer-encoding: chunked");
+    let json_str = if is_chunked {
+        decode_chunked(body)
+    } else {
+        body.trim().to_string()
+    };
+    serde_json::from_str(&json_str).unwrap_or_else(|e| {
+        eprintln!("[WindsurfChat] JSON解析失败: {}", e);
+        eprintln!("[WindsurfChat] 原始body(前200字节): {:?}", &json_str.chars().take(200).collect::<String>());
         serde_json::json!({"action":"error","error":"JSON解析失败","text":"","images":[]})
     })
+}
+
+fn decode_chunked(body: &str) -> String {
+    let mut result = String::new();
+    let mut remaining = body;
+    loop {
+        let size_end = match remaining.find("\r\n") {
+            Some(i) => i,
+            None => break,
+        };
+        let size_str = remaining[..size_end].trim();
+        let chunk_size = match usize::from_str_radix(size_str, 16) {
+            Ok(s) => s,
+            Err(_) => break,
+        };
+        if chunk_size == 0 { break; }
+        let data_start = size_end + 2;
+        let data_end = data_start + chunk_size;
+        if data_end > remaining.len() { break; }
+        result.push_str(&remaining[data_start..data_end]);
+        remaining = &remaining[data_end..];
+        if remaining.starts_with("\r\n") {
+            remaining = &remaining[2..];
+        }
+    }
+    if result.is_empty() { body.trim().to_string() } else { result }
 }
 
 fn format_output(response: &serde_json::Value) -> String {
