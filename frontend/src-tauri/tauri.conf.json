@@ -32,7 +32,7 @@
       "icons/icon.ico"
     ],
     "resources": [
-      "binaries/windsurf_chat-aarch64-apple-darwin"
+      "binaries/windsurf_chat-universal-apple-darwin"
     ],
     "windows": {
       "wix": {

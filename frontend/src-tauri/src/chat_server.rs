@@ -15,6 +15,7 @@ pub struct ChatRequest {
     pub context: Option<String>,
     #[serde(rename = "workspacePath")]
     pub workspace_path: Option<String>,
+    pub images: Option<Vec<String>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -337,7 +338,7 @@ fn handle_request(reader: &mut BufReader<std::net::TcpStream>, stream: &mut std:
             s.pending_requests.remove(&request_id);
         }
         s.pending_requests.insert(request_id.clone(), StoredRequest {
-            data: ChatRequest { prompt: data.prompt.clone(), request_id: request_id.clone(), context: data.context.clone(), workspace_path: if workspace_path.is_empty() { None } else { Some(workspace_path.clone()) } },
+            data: ChatRequest { prompt: data.prompt.clone(), request_id: request_id.clone(), context: data.context.clone(), workspace_path: if workspace_path.is_empty() { None } else { Some(workspace_path.clone()) }, images: data.images.clone() },
             state: RequestState::Connected { response_tx: tx },
             timestamp: now_ts,
             project_name: project_name.clone(),
