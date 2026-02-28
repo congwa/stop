@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Cross-platform build script for windsurf_chat CLI
 import { execSync } from 'child_process';
-import { mkdirSync, copyFileSync } from 'fs';
+import { mkdirSync, copyFileSync, readdirSync, unlinkSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
@@ -53,32 +53,19 @@ const target = hostLine ? hostLine.split(' ')[1].trim() : 'unknown';
 // For macOS, use universal-apple-darwin as target
 const finalTarget = process.platform === 'darwin' ? 'universal-apple-darwin' : target;
 
-// Create binaries directory
+// Create binaries directory and clean stale files
 const binDir = join(projectRoot, 'src-tauri', 'binaries');
 mkdirSync(binDir, { recursive: true });
-
-// Tauri externalBin 命名规则：binaries/{name}-{target-triple}
-// 需要为每种打包目标都提供对应名称的文件
-if (process.platform === 'darwin') {
-  const universalSrc = join(projectRoot, 'windsurf_chat', 'target', 'universal-apple-darwin', 'release', 'windsurf_chat');
-  const arm64Src    = join(projectRoot, 'windsurf_chat', 'target', 'aarch64-apple-darwin',   'release', 'windsurf_chat');
-  const x8664Src    = join(projectRoot, 'windsurf_chat', 'target', 'x86_64-apple-darwin',    'release', 'windsurf_chat');
-
-  // universal build (tauri:build)
-  copyFileSync(universalSrc, join(binDir, 'windsurf_chat-universal-apple-darwin'));
-  // arm-only build (tauri:build:arm)
-  copyFileSync(arm64Src,    join(binDir, 'windsurf_chat-aarch64-apple-darwin'));
-  // intel-only build (tauri:build:intel)
-  copyFileSync(x8664Src,    join(binDir, 'windsurf_chat-x86_64-apple-darwin'));
-
-  console.log('Built windsurf_chat → universal / aarch64 / x86_64');
-} else if (isWindows) {
-  const src = join(projectRoot, 'windsurf_chat', 'target', 'release', 'windsurf_chat.exe');
-  const hostTarget = finalTarget;
-  copyFileSync(src, join(binDir, `windsurf_chat-${hostTarget}.exe`));
-  console.log(`Built windsurf_chat for ${hostTarget}`);
-} else {
-  const src = join(projectRoot, 'windsurf_chat', 'target', 'release', 'windsurf_chat');
-  copyFileSync(src, join(binDir, `windsurf_chat-${finalTarget}`));
-  console.log(`Built windsurf_chat for ${finalTarget}`);
+for (const f of readdirSync(binDir)) {
+  if (f.startsWith('windsurf_chat')) {
+    unlinkSync(join(binDir, f));
+  }
 }
+
+// 复制最终二进制到 src-tauri/binaries/windsurf_chat
+// Tauri resources 直接打入 Contents/Resources/，find_app_binary() 在该目录查找
+const srcBinary = join(projectRoot, 'windsurf_chat', 'target', finalTarget, 'release', isWindows ? 'windsurf_chat.exe' : 'windsurf_chat');
+const destBinary = join(binDir, isWindows ? 'windsurf_chat.exe' : 'windsurf_chat');
+copyFileSync(srcBinary, destBinary);
+
+console.log(`Built windsurf_chat for ${finalTarget}`);
