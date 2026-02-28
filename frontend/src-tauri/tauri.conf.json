@@ -32,8 +32,7 @@
       "icons/icon.ico"
     ],
     "resources": [
-      "binaries/windsurf_chat-x86_64-pc-windows-msvc.exe",
-      "binaries/windsurf_chat"
+      "binaries/windsurf_chat-aarch64-apple-darwin"
     ],
     "windows": {
       "wix": {
