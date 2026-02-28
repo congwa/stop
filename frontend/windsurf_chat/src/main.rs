@@ -2,7 +2,6 @@ use std::env;
 use std::fs;
 use std::io::{Read, Write};
 use std::net::TcpStream;
-use std::path::Path;
 use std::time::Duration;
 
 fn main() {
@@ -40,13 +39,10 @@ fn ram_disk_port_path() -> std::path::PathBuf {
 
 fn read_port() -> u16 {
     let ram_disk_port = ram_disk_port_path();
-    let cwd_port = Path::new(".wdm/port");
     let script_dir = env::current_exe().ok().and_then(|p| p.parent().map(|d| d.join("port")));
 
     let port_file = if ram_disk_port.exists() {
         Some(ram_disk_port.clone())
-    } else if cwd_port.exists() {
-        Some(cwd_port.to_path_buf())
     } else {
         script_dir.filter(|p| p.exists())
     };
@@ -55,7 +51,7 @@ fn read_port() -> u16 {
         Some(p) => p,
         None => {
             eprintln!("[WindsurfChat] 错误: 端口文件不存在，请确保 Stop 应用已启动");
-            eprintln!("[WindsurfChat] 已检查: {}, .wdm/port", ram_disk_port.display());
+            eprintln!("[WindsurfChat] 已检查: {}", ram_disk_port.display());
             std::process::exit(1);
         }
     };

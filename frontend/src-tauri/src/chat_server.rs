@@ -119,9 +119,6 @@ pub fn stop_server(state: SharedState) {
             }
         }
     }
-    for wp in &s.workspace_paths {
-        let _ = std::fs::remove_file(wp.join(".wdm").join("port"));
-    }
 }
 
 pub fn send_response(state: SharedState, request_id: &str, response: ChatResponse) -> Result<(), String> {
@@ -189,14 +186,7 @@ pub fn set_workspace_paths(state: SharedState, paths: Vec<PathBuf>) {
 pub fn write_port_files(state: SharedState) {
     let s = state.lock().unwrap();
     if s.port == 0 { return; }
-    // Write port to RAM disk (primary)
     let _ = crate::ram_disk::write_port(s.port);
-    // Also write to each workspace .wdm/ dir (fallback for windsurf_chat)
-    for wp in &s.workspace_paths {
-        let dir = wp.join(".wdm");
-        let _ = std::fs::create_dir_all(&dir);
-        let _ = std::fs::write(dir.join("port"), s.port.to_string());
-    }
 }
 
 fn registry_path() -> Option<PathBuf> {
@@ -216,7 +206,7 @@ pub fn restore_workspace_paths(state: SharedState) {
     let file = match registry_path() { Some(f) if f.exists() => f, _ => return };
     let content = match std::fs::read_to_string(&file) { Ok(c) => c, Err(_) => return };
     let strings: Vec<String> = match serde_json::from_str(&content) { Ok(v) => v, Err(_) => return };
-    let paths: Vec<PathBuf> = strings.into_iter().map(PathBuf::from).filter(|p| p.join(".wdm").is_dir()).collect();
+    let paths: Vec<PathBuf> = strings.into_iter().map(PathBuf::from).filter(|p| p.is_dir()).collect();
     if !paths.is_empty() {
         let mut s = state.lock().unwrap();
         if s.workspace_paths.is_empty() { s.workspace_paths = paths; }

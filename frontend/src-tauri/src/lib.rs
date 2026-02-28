@@ -1,6 +1,5 @@
 pub mod cascade_api;
 pub mod chat_server;
-pub mod chat_workspace;
 pub mod commands;
 pub mod focus;
 pub mod global_rules;
@@ -85,7 +84,6 @@ pub fn run() {
             commands::get_pending_prompts,
             commands::dismiss_chat_request,
             commands::save_feedback_image,
-            commands::setup_chat_workspace,
             commands::focus_windsurf,
             commands::get_ram_disk_status,
             commands::init_ram_disk,

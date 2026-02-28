@@ -1,4 +1,4 @@
-use crate::{cascade_api, chat_server, chat_workspace, focus, global_rules, launchagent, license, ram_disk, sentinel};
+use crate::{cascade_api, chat_server, focus, global_rules, launchagent, license, ram_disk, sentinel};
 use crate::chat_server::SharedState;
 
 // ===== Auto Mode =====
@@ -83,7 +83,7 @@ pub async fn save_feedback_image(
         .ok_or("No workspace configured. Please initialize a workspace first.")?;
 
     tokio::task::spawn_blocking(move || {
-        let images_dir = ws.join(".wdm").join("images");
+        let images_dir = select_images_dir(&ws)?;
         std::fs::create_dir_all(&images_dir)
             .map_err(|e| format!("Failed to create images directory: {}", e))?;
 
@@ -106,32 +106,11 @@ pub async fn save_feedback_image(
     }).await.map_err(|e| e.to_string())?
 }
 
-#[tauri::command]
-pub async fn setup_chat_workspace(
-    state: tauri::State<'_, SharedState>,
-    workspace_path: String,
-) -> Result<(), String> {
-    let shared = state.inner().clone();
-    let wp = std::path::PathBuf::from(&workspace_path);
-
-    let wp2 = wp.clone();
-    tokio::task::spawn_blocking(move || {
-        let cli_binary = std::env::current_exe()
-            .ok()
-            .and_then(|p| p.parent().map(|d| d.join("windsurf_chat")))
-            .unwrap_or_default();
-        chat_workspace::setup_workspace(&wp2, &cli_binary)
-    }).await.map_err(|e| e.to_string())??;
-
-    let mut paths = vec![wp.clone()];
-    let existing = chat_server::get_workspace_paths(shared.clone());
-    for p in existing {
-        if p != wp { paths.push(p); }
+fn select_images_dir(_workspace_path: &std::path::Path) -> Result<std::path::PathBuf, String> {
+    if !crate::ram_disk::is_mounted() {
+        return Err("RAM disk is not mounted. Please initialize the RAM disk first.".to_string());
     }
-    chat_server::set_workspace_paths(shared.clone(), paths);
-    chat_server::write_port_files(shared);
-
-    Ok(())
+    Ok(crate::ram_disk::ram_disk_path().join("feedback_images"))
 }
 
 // ===== RAM Disk / Global Setup =====

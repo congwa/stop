@@ -71,7 +71,6 @@ interface ChatStoreState {
   endChat: (requestId: string) => Promise<void>
 
   saveFeedbackImage: (base64Data: string, filename: string) => Promise<string>
-  setupWorkspace: (path: string) => Promise<void>
 
   addPending: (prompt: PendingPrompt) => void
   removePending: (requestId: string) => void
@@ -279,11 +278,6 @@ export const useChatStore = create<ChatStoreState>((set, get) => ({
   saveFeedbackImage: async (base64Data: string, filename: string) => {
     if (!isTauri()) return ''
     return tauriInvoke<string>('save_feedback_image', { imageData: base64Data, filename })
-  },
-
-  setupWorkspace: async (path: string) => {
-    if (!isTauri()) return
-    await tauriInvoke('setup_chat_workspace', { workspacePath: path })
   },
 
   addPending: (prompt: PendingPrompt) => {
