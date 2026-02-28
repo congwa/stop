@@ -21,6 +21,11 @@ pub fn run() {
             let state = server_state.clone();
 
             std::thread::spawn(move || {
+                // 0. Clean up old feedback images (from previous sessions)
+                if let Err(e) = commands::cleanup_feedback_images() {
+                    eprintln!("[Stop] Failed to cleanup feedback images: {}", e);
+                }
+
                 // 1. Start chat server
                 let port = match chat_server::start_server(state.clone(), app_handle) {
                     Ok(p) => { eprintln!("[Stop] Chat server started on port {}", p); p }

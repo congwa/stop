@@ -199,10 +199,59 @@ pub async fn save_feedback_image(
 }
 
 fn select_images_dir(_workspace_path: &std::path::Path) -> Result<std::path::PathBuf, String> {
-    if !crate::ram_disk::is_mounted() {
-        return Err("RAM disk is not mounted. Please initialize the RAM disk first.".to_string());
+    // Use Application Support directory instead of RAM disk to avoid noowners permission issues
+    // Windsurf's read_file tool cannot read files from volumes mounted with noowners flag
+    let app_support = dirs::data_dir()
+        .or_else(|| dirs::home_dir().map(|h| h.join("Library").join("Application Support")))
+        .ok_or("Cannot determine Application Support directory")?;
+    
+    Ok(app_support.join("Stop").join("feedback_images"))
+}
+
+/// Clean up old feedback images from Application Support directory.
+/// Called on app startup to prevent accumulation of stale images.
+pub fn cleanup_feedback_images() -> Result<(), String> {
+    let images_dir = dirs::data_dir()
+        .or_else(|| dirs::home_dir().map(|h| h.join("Library").join("Application Support")))
+        .map(|d| d.join("Stop").join("feedback_images"));
+    
+    let images_dir = match images_dir {
+        Some(d) if d.exists() => d,
+        _ => return Ok(()), // Directory doesn't exist, nothing to clean
+    };
+    
+    let now = std::time::SystemTime::now();
+    let max_age = std::time::Duration::from_secs(24 * 60 * 60); // 24 hours
+    
+    let entries = match std::fs::read_dir(&images_dir) {
+        Ok(e) => e,
+        Err(_) => return Ok(()),
+    };
+    
+    let mut removed = 0;
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if !path.is_file() { continue; }
+        
+        // Check file age
+        if let Ok(metadata) = path.metadata() {
+            if let Ok(modified) = metadata.modified() {
+                if let Ok(age) = now.duration_since(modified) {
+                    if age > max_age {
+                        if std::fs::remove_file(&path).is_ok() {
+                            removed += 1;
+                        }
+                    }
+                }
+            }
+        }
     }
-    Ok(crate::ram_disk::ram_disk_path().join("feedback_images"))
+    
+    if removed > 0 {
+        eprintln!("[Stop] Cleaned up {} old feedback images", removed);
+    }
+    
+    Ok(())
 }
 
 // ===== RAM Disk / Global Setup =====
