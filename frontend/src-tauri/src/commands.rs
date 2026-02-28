@@ -3,7 +3,7 @@ use crate::chat_server::SharedState;
 
 /// 安全截取字符串前 N 个字符，返回 &str，零堆分配，永不 panic。
 /// 中文/emoji 等多字节字符均按字符计数而非字节。
-fn str_preview(s: &str, max_chars: usize) -> &str {
+pub fn str_preview(s: &str, max_chars: usize) -> &str {
     match s.char_indices().nth(max_chars) {
         Some((byte_idx, _)) => &s[..byte_idx],
         None => s,

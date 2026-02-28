@@ -101,15 +101,12 @@ fn make_request(port: u16, prompt: &str, context: &str, retry: u8) -> serde_json
     if let Err(e) = stream.read_to_end(&mut buf) {
         return serde_json::json!({"action":"error","error":format!("读取失败: {}",e),"text":"","images":[]});
     }
-    let s = String::from_utf8_lossy(&buf);
-    let header_end = s.find("\r\n\r\n").map(|i| i + 4).unwrap_or(0);
-    let body = &s[header_end..];
-    // Detect chunked transfer encoding
-    let is_chunked = s[..header_end].to_ascii_lowercase().contains("transfer-encoding: chunked");
+    let header_end = buf.windows(4).position(|w| w == b"\r\n\r\n").map(|i| i + 4).unwrap_or(0);
+    let is_chunked = String::from_utf8_lossy(&buf[..header_end]).to_ascii_lowercase().contains("transfer-encoding: chunked");
     let json_str = if is_chunked {
-        decode_chunked(body)
+        decode_chunked(&buf[header_end..])
     } else {
-        body.trim().to_string()
+        String::from_utf8_lossy(&buf[header_end..]).trim().to_string()
     };
     serde_json::from_str(&json_str).unwrap_or_else(|e| {
         eprintln!("[WindsurfChat] JSON解析失败: {}", e);
@@ -118,30 +115,35 @@ fn make_request(port: u16, prompt: &str, context: &str, retry: u8) -> serde_json
     })
 }
 
-fn decode_chunked(body: &str) -> String {
-    let mut result = String::new();
-    let mut remaining = body;
+fn decode_chunked(bytes: &[u8]) -> String {
+    let mut result = Vec::new();
+    let mut pos = 0;
     loop {
-        let size_end = match remaining.find("\r\n") {
-            Some(i) => i,
+        if pos >= bytes.len() { break; }
+        let chunk_header_end = match bytes[pos..].windows(2).position(|w| w == b"\r\n") {
+            Some(i) => pos + i,
             None => break,
         };
-        let size_str = remaining[..size_end].trim();
+        let size_str = match std::str::from_utf8(&bytes[pos..chunk_header_end]) {
+            Ok(s) => s.trim(),
+            Err(_) => break,
+        };
         let chunk_size = match usize::from_str_radix(size_str, 16) {
             Ok(s) => s,
             Err(_) => break,
         };
         if chunk_size == 0 { break; }
-        let data_start = size_end + 2;
+        let data_start = chunk_header_end + 2;
         let data_end = data_start + chunk_size;
-        if data_end > remaining.len() { break; }
-        result.push_str(&remaining[data_start..data_end]);
-        remaining = &remaining[data_end..];
-        if remaining.starts_with("\r\n") {
-            remaining = &remaining[2..];
+        if data_end > bytes.len() { break; }
+        result.extend_from_slice(&bytes[data_start..data_end]);
+        pos = data_end;
+        if bytes.get(pos..pos + 2) == Some(b"\r\n") {
+            pos += 2;
         }
     }
-    if result.is_empty() { body.trim().to_string() } else { result }
+    String::from_utf8(result)
+        .unwrap_or_else(|e| String::from_utf8_lossy(&e.into_bytes()).to_string())
 }
 
 fn format_output(response: &serde_json::Value) -> String {

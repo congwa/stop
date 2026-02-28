@@ -7,6 +7,8 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use tauri::{AppHandle, Emitter};
 
+use crate::commands::str_preview;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChatRequest {
     pub prompt: String,
@@ -127,7 +129,7 @@ pub fn send_response(state: SharedState, request_id: &str, response: ChatRespons
     eprintln!("  - request_id: {}", request_id);
     eprintln!("  - action: {}", response.action);
     eprintln!("  - text length: {}", response.text.len());
-    eprintln!("  - text 前50字符: {}", &response.text[..50.min(response.text.len())]);
+    eprintln!("  - text 前50字符: {}", str_preview(&response.text, 50));
     eprintln!("  - images count: {}", response.images.len());
     
     // 详细记录每个图片路径
