@@ -50,7 +50,6 @@ pub struct ServerStatus {
 enum RequestState {
     Connected { response_tx: std::sync::mpsc::Sender<ChatResponse> },
     Disconnected { disconnected_at: std::time::Instant },
-    ResponseQueued { response: ChatResponse, #[allow(dead_code)] queued_at: std::time::Instant },
     Completed { #[allow(dead_code)] response_action: String, completed_at: std::time::Instant },
 }
 
@@ -59,7 +58,6 @@ impl RequestState {
         match self {
             RequestState::Connected { .. } => "connected",
             RequestState::Disconnected { .. } => "disconnected",
-            RequestState::ResponseQueued { .. } => "response_queued",
             RequestState::Completed { .. } => "completed",
         }
     }
@@ -182,15 +180,10 @@ pub fn send_response(state: SharedState, request_id: &str, response: ChatRespons
                     }
                 }
             }
-            RequestState::Disconnected { .. } | RequestState::ResponseQueued { .. } => {
-                eprintln!("[ChatServer] 请求已断开或队列中，保存响应");
-                req.state = RequestState::ResponseQueued { response: response.clone(), queued_at: std::time::Instant::now() };
-                eprintln!("[ChatServer] 响应已保存到队列");
-                eprintln!("[ChatServer] 队列中的响应包含:");
-                eprintln!("  - action: {}", action);
-                eprintln!("  - text length: {}", response.text.len());
-                eprintln!("  - images count: {}", response.images.len());
-                Ok(())
+            RequestState::Disconnected { .. } => {
+                eprintln!("[ChatServer] 客户端已断开，丢弃响应 (action: {}, text_len: {})", action, response.text.len());
+                req.state = RequestState::Completed { response_action: format!("{}_discarded", action), completed_at: std::time::Instant::now() };
+                Err("client disconnected, response discarded".to_string())
             }
             RequestState::Completed { .. } => {
                 eprintln!("[ChatServer] 请求已完成: {}", request_id);
@@ -402,26 +395,6 @@ fn handle_request(reader: &mut BufReader<std::net::TcpStream>, stream: &mut std:
         workspace_path.trim_end_matches('/').split('/').filter(|s: &&str| !s.is_empty()).last().map(|s: &str| s.to_string())
     } else { None };
 
-    // Check for queued response
-    {
-        let mut s = state.lock().unwrap();
-        let queued_key = s.pending_requests.iter()
-            .find(|(_, req)| matches!(req.state, RequestState::ResponseQueued { .. }) && req.data.workspace_path.as_deref() == Some(&workspace_path))
-            .map(|(k, _)| k.clone());
-        if let Some(old_key) = queued_key {
-            if let Some(old_req) = s.pending_requests.get_mut(&old_key) {
-                let old_state = std::mem::replace(&mut old_req.state, RequestState::Completed { response_action: "queued_delivered".to_string(), completed_at: std::time::Instant::now() });
-                if let RequestState::ResponseQueued { response, .. } = old_state {
-                    drop(s);
-                    let body = serde_json::to_string(&response).unwrap_or_default();
-                    send_http_response(stream, 200, &body);
-                    let _ = app_handle.emit("chat-request-completed", &old_key);
-                    return;
-                }
-            }
-        }
-    }
-
     crate::focus::focus_self(&app_handle);
 
     let now_ts = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_secs();
@@ -538,10 +511,14 @@ fn is_tcp_alive(stream: &std::net::TcpStream) -> bool {
     let check = match stream.try_clone() { Ok(s) => s, Err(_) => return false };
     let _ = check.set_nonblocking(true);
     let mut buf = [0u8; 1];
-    match check.peek(&mut buf) {
+    let alive = match check.peek(&mut buf) {
         Ok(0) => false,
         Ok(_) => true,
         Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => true,
+        Err(ref e) if e.kind() == std::io::ErrorKind::Interrupted => true,
         Err(_) => false,
-    }
+    };
+    // try_clone 共享底层 socket fd，必须恢复阻塞模式，否则影响原始 stream 的 write_all
+    let _ = check.set_nonblocking(false);
+    alive
 }
