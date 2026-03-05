@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect } from 'react'
 import { useChatStore } from '@/store/useChatStore'
 import { useLicenseStore } from '@/store/useLicenseStore'
 import { cn } from '@/lib/utils'
+import { ThemeToggle } from './ThemeToggle'
 import {
   Play,
   Square,
@@ -69,6 +70,7 @@ export function ChatPanel() {
               <Play className="h-3.5 w-3.5" />{isStarting ? '启动中...' : '启动'}
             </button>
           )}
+          <ThemeToggle />
           <button
             onClick={logoutLicense}
             className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"

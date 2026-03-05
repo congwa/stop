@@ -48,8 +48,8 @@ export default function LicenseGate({ children }: { children: ReactNode }) {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="flex flex-col items-center gap-3 text-slate-400">
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950">
+        <div className="flex flex-col items-center gap-3 text-slate-400 dark:text-slate-500">
           <Loader2 size={32} className="animate-spin" />
           <p className="text-sm">正在验证授权...</p>
         </div>
@@ -60,14 +60,14 @@ export default function LicenseGate({ children }: { children: ReactNode }) {
   // Network error (not invalid key - just can't reach server)
   if (error && !status) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950">
         <div className="flex flex-col items-center gap-4 max-w-sm text-center px-6">
-          <WifiOff size={40} className="text-slate-300" />
-          <p className="text-lg font-semibold text-slate-700">无法连接授权服务器</p>
-          <p className="text-slate-400 text-sm">{error}</p>
+          <WifiOff size={40} className="text-slate-300 dark:text-slate-600" />
+          <p className="text-lg font-semibold text-slate-700 dark:text-slate-200">无法连接授权服务器</p>
+          <p className="text-slate-400 dark:text-slate-500 text-sm">{error}</p>
           <button
             onClick={verifyLicense}
-            className="mt-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-medium transition-colors"
+            className="mt-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white dark:text-slate-50 rounded-xl text-sm font-medium transition-colors"
           >
             重试
           </button>
